@@ -374,4 +374,22 @@
 - **Dónde aplica:** build_app.py (`MP_CAUSAL_ESTADO`, `estadoDesdeMatriz`,
   `recalcEstadoEquipo`); CHANGELOG v0.34.
 
+## [2026-05-28] Verificada la idempotencia de la conciliación del maestro
+
+- **Disparador:** riesgo anotado en TRASPASO.md ("reimportar el maestro puede duplicar").
+  El usuario sube el maestro cada mañana, así que era crítico confirmarlo.
+- **Verificado con SU maestro real** (`ProgramaciónMP_2026.xlsm`, 893/894 equipos) y SU
+  backup, replicando `parsearMaestro` + `compararMaestro` + `registrarOActualizarConflicto`
+  en Node:
+  - Resubir sobre su estado actual: 3 subidas → 0 conflictos / 0 auto / 0 sintéticos, sin cambios.
+  - Desde estado vacío: 1ª subida crea 3337 auto-completados + 961 eventos sintéticos (las MP
+    de la gantt); 2ª y 3ª → 0/0/0. Total estable en 1046 eventos.
+  - **Conclusión: la conciliación ES idempotente.** La doble protección lo evita: celda ya
+    escrita (`vp===vm` → no reescribe) y `yaExiste` verifica evento MP del mes (→ no recrea).
+- **Observación:** la 1ª conciliación desde cero convierte la gantt en ~961 eventos sintéticos
+  (`origen='conciliacion_auto'`). Tras v0.33/0.34 la lógica ya lee la matriz directamente, así
+  que esos sintéticos son redundantes pero inofensivos (dan trazabilidad en bitácora y van a la
+  hoja oculta del Excel). A considerar si algún día se quiere aligerar.
+- **Dónde aplica:** verificación (sin cambio de código); confirma `compararMaestro`.
+
 <!-- Próximas entradas debajo de esta línea -->
