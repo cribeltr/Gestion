@@ -193,4 +193,23 @@
   (reconstrucción), anulación (reapertura) y formulario Reparación; CHANGELOG
   v0.26; app.html regenerado.
 
+## [2026-05-28] El número de versión del encabezado quedaba "pegado" (v0.27)
+
+- **Disparador:** el usuario notó que el programa mostraba "v0.23" en el encabezado
+  aunque APP_VERSION ya iba en 0.26.
+- **Confirmado:** el header tenía el número escrito a mano (`<small>… v0.23</small>`,
+  línea ~782), independiente de APP_VERSION (~802). Subir la versión no lo tocaba.
+  Se reemplazó por el placeholder `__APP_VERSION__`, que build_app.py sustituye con
+  el valor real de APP_VERSION (regex) al generar. Verificado: el encabezado quedó
+  en v0.27, sin placeholder residual.
+- **Heurística:** todo dato que el usuario ve y que también existe como constante
+  debe derivarse de la constante (una sola fuente de verdad), nunca duplicarse a
+  mano; si no, se desincroniza. Conviene revisar otros textos "duplicados" del HTML.
+- **Observación de uso (no es bug):** el usuario trabajaba sobre un app.html v0.25
+  con datos antiguos (1035 eventos en localStorage), no sobre su seed de 85. Chrome
+  guarda el estado por ruta del archivo: reemplazar app.html en la misma carpeta
+  conserva el localStorage viejo. Para ver el seed nuevo: ↻ Reset o carpeta nueva.
+- **Dónde aplica:** build_app.py (header ~782 + sustitución final de
+  `__APP_VERSION__`); CHANGELOG v0.27.
+
 <!-- Próximas entradas debajo de esta línea -->

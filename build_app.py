@@ -17,6 +17,11 @@ HTML = r"""<!DOCTYPE html>
 <script>__LZSTRING_PLACEHOLDER__</script>
 <!--
 CHANGELOG
+v0.27 [2026-05-28] El número de versión del encabezado se sincroniza solo.
+  - El encabezado mostraba "v0.23" fijo (escrito a mano), sin actualizarse al subir
+    APP_VERSION en versiones siguientes. Ahora usa el placeholder __APP_VERSION__
+    que build_app.py reemplaza con el valor real de APP_VERSION al generar: una
+    sola fuente de verdad, no vuelve a quedar desfasado.
 v0.26 [2026-05-28] Cierre de ciclo por Recepción + Reparación "en servicio técnico".
   - Flujo de reparación externa: la "Recepción" en estado Operativo ahora CIERRA
     el ciclo correctivo (el equipo retornó funcionando). Antes solo lo cerraban la
@@ -779,7 +784,7 @@ header.top nav button .nav-badge{display:inline-block;margin-left:6px;padding:0 
 <body>
 <div class="app">
   <header class="top">
-    <h1>HHHA <small>Equipos Críticos · v0.23</small></h1>
+    <h1>HHHA <small>Equipos Críticos · v__APP_VERSION__</small></h1>
     <nav id="nav"></nav>
     <div class="tools">
       <span id="state-indicator" class="state-indicator" title="">—</span>
@@ -824,7 +829,7 @@ const SEED = __SEED_PLACEHOLDER__;
 //==============================================================
 // CONSTANTES & CATÁLOGOS
 //==============================================================
-const APP_VERSION = '0.26';
+const APP_VERSION = '0.27';
 const STORAGE_KEY = 'hhha_v1_data';
 const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 const MES_NUM = {Ene:0,Feb:1,Mar:2,Abr:3,May:4,Jun:5,Jul:6,Ago:7,Sep:8,Oct:9,Nov:10,Dic:11};
@@ -5320,6 +5325,11 @@ with open("/tmp/node_modules/lz-string/libs/lz-string.min.js", "r", encoding="ut
     lzs = f.read()
 lzs_safe = re.sub(r"</(script)", r"<\\/\1", lzs, flags=re.IGNORECASE)
 out = out.replace("__LZSTRING_PLACEHOLDER__", lzs_safe)
+
+# Sincronizar el número de versión visible del encabezado con APP_VERSION (una sola fuente de verdad).
+_mver = re.search(r"const APP_VERSION = '([^']+)'", out)
+if _mver:
+    out = out.replace("__APP_VERSION__", _mver.group(1))
 
 target = str(pathlib.Path(__file__).resolve().parent / "app.html")
 pathlib.Path(target).write_text(out, encoding="utf-8")
