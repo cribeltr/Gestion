@@ -17,6 +17,17 @@ HTML = r"""<!DOCTYPE html>
 <script>__LZSTRING_PLACEHOLDER__</script>
 <!--
 CHANGELOG
+v0.26 [2026-05-28] Cierre de ciclo por Recepción + Reparación "en servicio técnico".
+  - Flujo de reparación externa: la "Recepción" en estado Operativo ahora CIERRA
+    el ciclo correctivo (el equipo retornó funcionando). Antes solo lo cerraban la
+    Reparación y la Visita correctiva operativas, así que un equipo reparado afuera
+    y recibido dejaba el ciclo abierto para siempre.
+  - Aplicado en los 3 puntos del mismo patrón: aplicarEfectosEvento (registro en
+    vivo), reconstrucción de ciclos al cargar el seed (bootstrap) y reapertura al
+    anular (si se anula la Recepción/Reparación que cerró y no hay otra operativa).
+  - La "Reparación" admite estado resultante "En servicio técnico": permite
+    registrar "reparado en el servicio técnico externo, aún sin retornar" sin
+    cerrar el ciclo y dejando el equipo en servicio técnico.
 v0.25 [2026-05-28] Carga de datos reales del usuario como nuevo seed.
   - El programa arranca ahora con los datos reales del usuario: 85 eventos, 34
     pendientes y 3 ciclos correctivos (reconstruidos desde las Solicitudes de
@@ -813,7 +824,7 @@ const SEED = __SEED_PLACEHOLDER__;
 //==============================================================
 // CONSTANTES & CATÁLOGOS
 //==============================================================
-const APP_VERSION = '0.25';
+const APP_VERSION = '0.26';
 const STORAGE_KEY = 'hhha_v1_data';
 const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 const MES_NUM = {Ene:0,Feb:1,Mar:2,Abr:3,May:4,Jun:5,Jul:6,Ago:7,Sep:8,Oct:9,Nov:10,Dic:11};
@@ -1223,6 +1234,11 @@ function aplicarEfectosEvento(ev){
     abrirCiclo(ev.folio, ev.inv, ev.fecha, ev.ejecutor, ev.obs);
   }
   if(tipo === 'Reparación' && ev.estado === 'operativo' && ev.folio){
+    const c = state.ciclos.find(x => x.folio === ev.folio && x.estado === 'abierto');
+    if(c) cerrarCiclo(ev.folio, ev.fecha);
+  }
+  // Recepción operativa = el equipo retornó funcionando → cierra el ciclo (flujo de reparación externa).
+  if(tipo === 'Recepción' && ev.estado === 'operativo' && ev.folio){
     const c = state.ciclos.find(x => x.folio === ev.folio && x.estado === 'abierto');
     if(c) cerrarCiclo(ev.folio, ev.fecha);
   }
@@ -3976,7 +3992,7 @@ function nuevoEvento(opts){
         campos.appendChild(formField('Informe técnico / Observación',obs));
       } else if(tipo === 'Reparación'){
         const folio = ciclosAb.length ? el('select',{},el('option',{value:''},'— sin ciclo —'),...ciclosAb.map(c=>el('option',{value:c.folio},c.folio))) : el('input',{type:'text',placeholder:'Folio SIGEM'});
-        const estado = el('select',{}, el('option',{value:'operativo'},'Operativo (cierra ciclo)'), el('option',{value:'no operativo'},'No operativo'));
+        const estado = el('select',{}, el('option',{value:'operativo'},'Operativo (cierra ciclo)'), el('option',{value:'no operativo'},'No operativo'), el('option',{value:'en servicio técnico'},'En servicio técnico (no cierra)'));
         const repuestos = el('input',{type:'text',placeholder:'Repuestos utilizados'});
         extra = {folio,estado,repuestos};
         campos.appendChild(el('div',{class:'grid-3'},
@@ -4288,12 +4304,12 @@ function anularEventoAplicar(ev, motivo){
     }
   }
   // 4. Reparación que cerró ciclo: reabrir si no hay otra reparación operativa posterior
-  if((ev.tipo === 'Reparación' || (ev.tipo === 'Visita técnica' && ev.tipoVisita === 'correctiva'))
+  if((ev.tipo === 'Reparación' || ev.tipo === 'Recepción' || (ev.tipo === 'Visita técnica' && ev.tipoVisita === 'correctiva'))
      && ev.estado === 'operativo' && ev.folio){
     const ciclo = state.ciclos.find(c => c.folio === ev.folio);
     if(ciclo && ciclo.estado === 'cerrado'){
       const otraOp = state.eventos.find(x => x.id !== ev.id && !x.anulado && x.folio === ev.folio &&
-        (x.tipo === 'Reparación' || (x.tipo === 'Visita técnica' && x.tipoVisita === 'correctiva')) &&
+        (x.tipo === 'Reparación' || x.tipo === 'Recepción' || (x.tipo === 'Visita técnica' && x.tipoVisita === 'correctiva')) &&
         x.estado === 'operativo');
       if(!otraOp){
         ciclo.estado = 'abierto';
@@ -5245,7 +5261,7 @@ function bootstrap(){
     });
     // Cerrar ciclos cuyo último evento de Reparación dejó operativo
     state.eventos.forEach(ev => {
-      if((ev.tipo === 'Reparación' || (ev.tipo === 'Visita técnica' && ev.tipoVisita==='correctiva')) && ev.estado === 'operativo' && ev.folio){
+      if((ev.tipo === 'Reparación' || ev.tipo === 'Recepción' || (ev.tipo === 'Visita técnica' && ev.tipoVisita==='correctiva')) && ev.estado === 'operativo' && ev.folio){
         const c = state.ciclos.find(x => x.folio === ev.folio && x.estado==='abierto');
         if(c) { c.estado='cerrado'; c.fechaCierre = ev.fecha; }
       }

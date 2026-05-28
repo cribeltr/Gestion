@@ -162,4 +162,35 @@
   regenerado. Conversor reproducible en `tools/excel_a_seed.py` (verificado:
   reproduce el seed byte a byte); insumo en `docs/origen_datos_20260528.xlsx`.
 
+## [2026-05-28] Cierre de ciclo por Recepción + Reparación "en servicio técnico" (v0.26)
+
+- **Disparador:** caso real del usuario (equipo 2-117812): reparado en el servicio
+  técnico externo pero aún sin retornar al hospital; no debía cerrarse el ciclo
+  hasta que el equipo volviera operativo. El programa no lo permitía bien.
+- **Confirmado:** el cierre automático del ciclo vivía en 3 puntos del MISMO patrón
+  y solo contemplaba Reparación / Visita correctiva operativa:
+  1. `aplicarEfectosEvento` (registro en vivo, ~1225).
+  2. reconstrucción al cargar el seed en `bootstrap` (~5248).
+  3. reapertura al anular (~4291), con doble condición (el `if` y el `otraOp`).
+  La "Recepción" ("equipo retorna") NO cerraba el ciclo → un equipo reparado afuera
+  y recibido dejaba el ciclo abierto para siempre. Se agregó `Recepción` operativa
+  en los 3 puntos (4 condiciones) y se añadió "en servicio técnico" al estado
+  resultante del formulario de Reparación.
+  - Simulado en Node con 2-117812: carga ciclo abierto → Recepción operativa CIERRA
+    → anular REABRE → Reparación "en servicio técnico" NO cierra (equipo queda
+    en_servicio_tecnico) → Recepción operativa CIERRA. Los 5 pasos ✅.
+  - Regresión: la carga del seed sigue dando 85 eventos / 34 pendientes / 3 ciclos
+    abiertos (no hay Recepciones en el seed; la nueva condición no dispara).
+- **Heurística:** confirmada la regla de oro del repo: el cierre/reapertura de ciclo
+  es UN patrón replicado en 3 sitios (4 condiciones); tocar uno obliga a tocar
+  todos. El `grep` de `cerrarCiclo` / `'abierto'` / `'cerrado'` antes de editar
+  evitó dejar un sitio sin cambiar.
+- **Pendiente detectado (no tocado):** inconsistencia de texto del tipo "Envío":
+  `TIPOS_EVENTO` usa 'Envío a servicio técnico' pero el seed/export usa 'Envío a
+  Serv. Técnico'. Conviene unificar para que filtros y `DOCS_CORRECTIVO` (~4130) lo
+  reconozcan igual. Anotado para una próxima sesión.
+- **Dónde aplica:** build_app.py `aplicarEfectosEvento`, `bootstrap`
+  (reconstrucción), anulación (reapertura) y formulario Reparación; CHANGELOG
+  v0.26; app.html regenerado.
+
 <!-- Próximas entradas debajo de esta línea -->
