@@ -17,6 +17,17 @@ HTML = r"""<!DOCTYPE html>
 <script>__LZSTRING_PLACEHOLDER__</script>
 <!--
 CHANGELOG
+v0.32 [2026-05-28] Excel autónomo: hoja oculta para lo automático + guía + "Por resolver".
+  - exportExcel() reestructurado para que el archivo sirva como respaldo de trabajo
+    sin el programa:
+    · Hoja "Léeme": resumen (totales) y qué contiene cada hoja.
+    · Hoja "Por resolver": pendientes abiertos + ciclos abiertos + borradores, con
+      columna "Hecho" para marcar en papel.
+    · Hoja "Eventos": SOLO lo que el usuario registró (incluye borradores).
+    · Hoja "Eventos (automáticos)" marcada como OCULTA (Workbook.Sheets[].Hidden=1):
+      eventos generados al conciliar el maestro (origen conciliacion/conciliacion_auto).
+    · Todas las tablas con anchos de columna y autofiltro para ordenar/buscar.
+  - Se verificó con SheetJS mini que la hoja oculta se escribe y relee como oculta.
 v0.31 [2026-05-28] Menú simplificado: principales + desplegable "Más".
   - Arriba quedan solo las vistas frecuentes (según el análisis de sesiones):
     Por resolver · Equipos · Conciliación · MP del mes.
@@ -917,7 +928,7 @@ const SEED = __SEED_PLACEHOLDER__;
 //==============================================================
 // CONSTANTES & CATÁLOGOS
 //==============================================================
-const APP_VERSION = '0.31';
+const APP_VERSION = '0.32';
 const STORAGE_KEY = 'hhha_v1_data';
 const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 const MES_NUM = {Ene:0,Feb:1,Mar:2,Abr:3,May:4,Jun:5,Jul:6,Ago:7,Sep:8,Oct:9,Nov:10,Dic:11};
@@ -4979,8 +4990,82 @@ function exportExcel(){
   state.equipos.forEach(recalcEstadoEquipo);
   const wb = XLSX.utils.book_new();
   const year = new Date().getFullYear();
+  const hoy = hoyLocal();
+  // Hoja simple con anchos. Las tablas además llevan autofiltro para ordenar/buscar en Excel.
+  const addPlain = (ws, nombre, cols) => { if(cols) ws['!cols']=cols; XLSX.utils.book_append_sheet(wb, ws, nombre); };
+  const tabla = (rows, nombre, cols) => {
+    const ws = XLSX.utils.json_to_sheet(rows.length ? rows : [{' ':'(sin datos)'}]);
+    if(ws['!ref']) ws['!autofilter'] = {ref: ws['!ref']};
+    addPlain(ws, nombre, cols);
+  };
 
-  // 1. Equipos (hoja simple)
+  // Mapeo de un evento a fila (se usa para los tuyos y para los automáticos)
+  const mapEv = e => ({
+    'ID': e.id, 'Fecha del evento': fmtFecha(e.fecha), 'Fecha registro': fmtFecha(e.fechaReg),
+    'N° Inv.': e.inv, 'Equipo': e.equipo||'', 'Servicio': e.servicio||'',
+    'Tipo': e.tipo, 'Resultado': e.resultado||'', 'Estado equipo': e.estado||'',
+    'Ejecutor': e.ejecutor||'', 'Folio SIGEM': e.folio||'',
+    'N° Envío': e.nEnvio||'', 'N° OC': e.nOC||'', 'N° Cotización': e.nCotiz||'',
+    'Empresa': e.empresa||'', 'Técnico': e.tecnico||'',
+    'Observación': e.obs||'', 'Oficial': e.oficial||'No', 'Creado por': e.creadoPor||''
+  });
+  const colsEv = [{wch:5},{wch:14},{wch:14},{wch:13},{wch:22},{wch:20},{wch:18},{wch:9},{wch:13},{wch:20},{wch:21},{wch:8},{wch:13},{wch:13},{wch:20},{wch:16},{wch:42},{wch:8},{wch:12}];
+
+  // Eventos automáticos (generados al conciliar el maestro) van a una hoja OCULTA.
+  // Lo que el usuario registró (incluidos borradores) va a la hoja visible "Eventos".
+  const esAuto = e => e.origen === 'conciliacion_auto' || e.origen === 'conciliacion';
+  const evNoAnul = state.eventos.filter(e=>!e.anulado);
+  const evMios = evNoAnul.filter(e=>!esAuto(e));
+  const evAuto = evNoAnul.filter(esAuto);
+  const pendAb = state.pendientes.filter(p=>!p.anulado && p.estado!=='cerrado');
+  const ciclosAb = state.ciclos.filter(c=>c.estado==='abierto');
+  const borr = evMios.filter(e=>e.oficial!=='Sí');
+
+  // 0. Léeme — guía para trabajar con el archivo sin el programa
+  const leeme = [
+    ['HHHA — Gestión de equipos biomédicos críticos'],
+    ['Exportado el', hoy],
+    [],
+    ['RESUMEN'],
+    ['Equipos en catálogo', state.equipos.length],
+    ['Eventos registrados por ti', evMios.length],
+    ['   · de ellos, borradores por oficializar', borr.length],
+    ['Eventos automáticos (del maestro)', evAuto.length],
+    ['Pendientes por resolver', pendAb.length],
+    ['Ciclos correctivos abiertos', ciclosAb.length],
+    [],
+    ['QUÉ CONTIENE CADA HOJA'],
+    ['Por resolver', 'Lo accionable: pendientes abiertos, ciclos abiertos y borradores. Pensada para imprimir y trabajar en papel.'],
+    ['Eventos', 'Lo que TÚ registraste (incluye borradores; mira la columna Oficial).'],
+    ['Equipos', 'Catálogo de equipos con su estado actual.'],
+    ['PMP_'+year, 'Programación anual de mantención (espejo de tu carta gantt / maestro).'],
+    ['Registro_MP-'+year, 'Programado (P) y Realizado (R) de la MP, por mes.'],
+    ['Pendientes', 'Todos los pendientes con su estado (No iniciado / En proceso / Resuelto).'],
+    ['Ciclos correctivos', 'Ciclos de falla, con apertura y cierre.'],
+    ['Eventos (automáticos)', 'HOJA OCULTA. Eventos que generó el programa al conciliar el maestro: NO los registraste tú. Para verla en Excel: clic derecho sobre una pestaña → Mostrar.'],
+  ];
+  addPlain(XLSX.utils.aoa_to_sheet(leeme), 'Léeme', [{wch:38},{wch:82}]);
+
+  // 1. Por resolver — para imprimir
+  const prRows = [];
+  pendAb.slice().sort((a,b)=>(a.fechaComp||'9999').localeCompare(b.fechaComp||'9999')).forEach(p=>prRows.push({
+    'Qué': 'Pendiente', 'Estado': ESTADO_PEND_LABEL[p.estado]||p.estado,
+    'N° Inv.': p.inv, 'Equipo': p.equipo||'', 'Servicio': p.servicio||'',
+    'Detalle': (TIPO_PENDIENTE[p.tipo]||p.tipo)+(p.desc?(' — '+p.desc):''), 'Ejecutor': p.ejecutor||'',
+    'Compromiso': fmtFecha(p.fechaComp), 'Hecho': ''
+  }));
+  ciclosAb.forEach(c=>{ const eq=findEquipo(c.inv); prRows.push({
+    'Qué':'Ciclo abierto','Estado':'Abierto','N° Inv.':c.inv,'Equipo':eq?(eq.equipo||''):'','Servicio':eq?(eq.servicio||''):'',
+    'Detalle':'Folio '+(c.folio||''),'Ejecutor':c.ingenieroAsignado||'','Compromiso':'','Hecho':''}); });
+  borr.forEach(e=>prRows.push({
+    'Qué':'Borrador','Estado':'Por oficializar','N° Inv.':e.inv,'Equipo':e.equipo||'','Servicio':e.servicio||'',
+    'Detalle':e.tipo+(e.obs?(' — '+e.obs):''),'Ejecutor':e.ejecutor||'','Compromiso':fmtFecha(e.fecha),'Hecho':''}));
+  tabla(prRows, 'Por resolver', [{wch:12},{wch:15},{wch:13},{wch:22},{wch:20},{wch:46},{wch:20},{wch:12},{wch:8}]);
+
+  // 2. Eventos (lo que tú registraste)
+  tabla(evMios.map(mapEv), 'Eventos', colsEv);
+
+  // 3. Equipos
   const equiposRows = state.equipos.map(e => ({
     'N° Inv.': e.inv, 'N° Carpeta': e.carpeta||'', 'Serie': e.serie||'',
     'Familia': e.fam||'', 'Equipo': e.equipo||'', 'Marca': e.marca||'', 'Modelo': e.modelo||'',
@@ -4991,9 +5076,9 @@ function exportExcel(){
     'Pendientes abiertos': pendientesDe(e.inv).filter(p=>p.estado!=='cerrado').length,
     'Ciclo abierto': ciclosAbiertosDe(e.inv).length > 0 ? 'Sí' : 'No'
   }));
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(equiposRows), 'Equipos');
+  tabla(equiposRows, 'Equipos', [{wch:13},{wch:9},{wch:14},{wch:16},{wch:22},{wch:16},{wch:18},{wch:22},{wch:18},{wch:18},{wch:12},{wch:6},{wch:6},{wch:12},{wch:13},{wch:14},{wch:12},{wch:10},{wch:11}]);
 
-  // 2. PMP_AAAA — espejo del maestro
+  // 4. PMP_AAAA — espejo del maestro
   const pmpHeader = ['Fam','ID','N° Carpeta','N° Inventario','Equipo','Servicio','Unidad','Ubicación','Procedencia','Marca','Modelo','Serie','Año Instalación','Vida Útil Residual','Clasificación','ENU / Baja','Observación','Frecuencia MP','Responsable MP',...MESES];
   const pmpData = [pmpHeader];
   state.equipos.forEach((e, i) => {
@@ -5001,16 +5086,14 @@ function exportExcel(){
     MESES.forEach(m => row.push((e.prog||{})[m] || ''));
     pmpData.push(row);
   });
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(pmpData), `PMP_${year}`);
+  addPlain(XLSX.utils.aoa_to_sheet(pmpData), `PMP_${year}`);
 
-  // 3. Registro_MP-AAAA — espejo con P y R por mes
-  const regHeader1 = ['','ID','N° Carpeta','N° Inventario','Equipo','Servicio','Unidad','Ubicación','Procedencia','Marca','Modelo','Serie','Año Instalación','Vida Útil Residual','Clasificación','ENU / Baja','Observación','Frecuencia MP','Responsable MP'];
-  MESES.forEach(()=>{ regHeader1.push('','') });
+  // 5. Registro_MP-AAAA — espejo con P y R por mes
   const regHeader2 = Array(19).fill('');
   MESES.forEach(m=>{ regHeader2.push('P','R') });
-  // Encabezado de meses en fila superior
   const regHeaderMonths = Array(19).fill('');
   MESES.forEach(m => { regHeaderMonths.push(m,''); });
+  regHeaderMonths[3] = 'N° Inventario';
   const regData = [regHeaderMonths, regHeader2];
   state.equipos.forEach((e, i) => {
     const row = ['', i+1, e.carpeta||'', e.inv, e.equipo||'', e.servicio||'', e.unidad||'', e.ubic||'', e.proc||'', e.marca||'', e.modelo||'', e.serie||'', e.ano||'', e.vur||'', e.clasif||'', e.enu||'', '', e.freq||'', ''];
@@ -5021,25 +5104,9 @@ function exportExcel(){
     });
     regData.push(row);
   });
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(regData), `Registro_MP-${year}`);
+  addPlain(XLSX.utils.aoa_to_sheet(regData), `Registro_MP-${year}`);
 
-  // 4. Eventos
-  const evRows = state.eventos.filter(e=>!e.anulado).map(e => ({
-    'ID': e.id,
-    'Fecha del evento': fmtFecha(e.fecha),
-    'Fecha registro': fmtFecha(e.fechaReg),
-    'Creado': e.ts ? new Date(e.ts).toLocaleString('es-CL', {year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'}) : '',
-    'N° Inv.': e.inv, 'Equipo': e.equipo||'', 'Servicio': e.servicio||'',
-    'Tipo': e.tipo, 'Resultado': e.resultado||'', 'Estado equipo': e.estado||'',
-    'Ejecutor': e.ejecutor||'', 'Folio SIGEM': e.folio||'',
-    'N° Envío': e.nEnvio||'', 'N° OC': e.nOC||'', 'N° Cotización': e.nCotiz||'',
-    'Empresa': e.empresa||'', 'Técnico': e.tecnico||'',
-    'Observación': e.obs||'', 'Oficial': e.oficial||'No',
-    'Creado por': e.creadoPor||''
-  }));
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(evRows), 'Eventos');
-
-  // 5. Pendientes
+  // 6. Pendientes
   const pendRows = state.pendientes.filter(p=>!p.anulado).map(p => ({
     'ID': p.id, 'N° Inv.': p.inv, 'Equipo': p.equipo||'', 'Servicio': p.servicio||'',
     'Tipo': TIPO_PENDIENTE[p.tipo]||p.tipo, 'Descripción': p.desc||'',
@@ -5047,9 +5114,9 @@ function exportExcel(){
     'Fecha creación': fmtFecha(p.fechaCrea), 'Fecha compromiso': fmtFecha(p.fechaComp),
     'Fecha cierre': fmtFecha(p.fechaCierre), 'Estado': ESTADO_PEND_LABEL[p.estado]||p.estado, 'Origen': p.origen||''
   }));
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(pendRows), 'Pendientes');
+  tabla(pendRows, 'Pendientes', [{wch:5},{wch:13},{wch:22},{wch:20},{wch:18},{wch:42},{wch:20},{wch:14},{wch:15},{wch:13},{wch:13},{wch:14}]);
 
-  // 6. Conflictos (si hay)
+  // 7. Conflictos (si hay)
   if(state.conflictos && state.conflictos.length > 0){
     const confRows = state.conflictos.map(c => ({
       'ID': c.id, 'Tipo': c.tipo, 'N° Inv.': c.inv, 'Estado': c.estado,
@@ -5059,26 +5126,33 @@ function exportExcel(){
       'Resuelto': c.fechaResolucion ? fmtFecha(c.fechaResolucion.slice(0,10)) : '',
       'Acción aplicada': c.accionAplicada||'', 'Valor final': c.resolucionValor||''
     }));
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(confRows), 'Conflictos');
+    tabla(confRows, 'Conflictos', [{wch:5},{wch:14},{wch:13},{wch:12},{wch:9},{wch:6},{wch:8},{wch:16},{wch:16},{wch:12},{wch:12},{wch:16},{wch:12}]);
   }
 
-  // 7. Ciclos correctivos
+  // 8. Ciclos correctivos
   if(state.ciclos && state.ciclos.length > 0){
     const cicRows = state.ciclos.map(c => ({
       'Folio SIGEM': c.folio, 'N° Inv.': c.inv, 'Estado': c.estado,
       'Apertura': fmtFecha(c.fechaApertura), 'Cierre': fmtFecha(c.fechaCierre),
       'Ingeniero asignado': c.ingenieroAsignado||'', 'Descripción inicial': c.descripcionInicial||''
     }));
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(cicRows), 'Ciclos correctivos');
+    tabla(cicRows, 'Ciclos correctivos', [{wch:22},{wch:13},{wch:11},{wch:13},{wch:13},{wch:22},{wch:46}]);
   }
+
+  // 9. Eventos (automáticos) — HOJA OCULTA
+  if(evAuto.length) tabla(evAuto.map(mapEv), 'Eventos (automáticos)', colsEv);
+
+  // Marcar como oculta la hoja de automáticos
+  wb.Workbook = {Sheets: wb.SheetNames.map(n => n === 'Eventos (automáticos)' ? {Hidden:1} : {})};
 
   const wbout = XLSX.write(wb, {bookType:'xlsx', type:'array'});
   const blob = new Blob([wbout], {type:'application/octet-stream'});
   const url = URL.createObjectURL(blob);
-  const a = el('a',{href:url, download:`hhha-export-${hoyLocal()}.xlsx`});
+  const a = el('a',{href:url, download:`hhha-export-${hoy}.xlsx`});
   document.body.appendChild(a); a.click(); a.remove();
   URL.revokeObjectURL(url);
-  toast('Excel exportado · '+wb.SheetNames.length+' hojas','success');
+  const vis = wb.SheetNames.length - (evAuto.length?1:0);
+  toast(`Excel exportado · ${vis} hoja(s)`+(evAuto.length?' + 1 oculta (automáticos)':''),'success');
 }
 function importData(){
   const input = el('input',{type:'file',accept:'application/json',style:{display:'none'},onchange:async e=>{

@@ -304,4 +304,25 @@
 - **Dónde aplica:** build_app.py (NAV_PRINCIPAL/SECUNDARIO, navBadge, buildNav,
   refreshNav, CSS `.nav-more`); CHANGELOG v0.31. Falta: Excel autónomo y pulir vistas.
 
+## [2026-05-28] Excel autónomo: hoja oculta + guía + "Por resolver" (v0.32)
+
+- **Disparador:** el usuario quiere que el Excel exportado sirva como respaldo de
+  trabajo SIN el programa, con lo automático (del maestro) en hoja oculta y lo suyo
+  aparte; y poder trabajar en papel.
+- **Hecho:** `exportExcel()` reestructurado. Hojas: **Léeme** (guía + totales),
+  **Por resolver** (pendientes abiertos + ciclos + borradores, con columna "Hecho"
+  para tildar en papel), **Eventos** (solo lo registrado por el usuario, incluye
+  borradores), Equipos, PMP, Registro_MP, Pendientes, Conflictos, Ciclos, y
+  **"Eventos (automáticos)" OCULTA** (origen `conciliacion`/`conciliacion_auto`).
+  Tablas con `!cols` y `!autofilter`. Ocultar vía `wb.Workbook.Sheets[].Hidden=1`.
+- **Validado:** SheetJS mini escribe/relee la hoja oculta; prueba generando un xlsx
+  con el seed + 1 evento auto: 9 hojas, "Eventos (automáticos)" oculta, evMios=85 /
+  evAuto=1, por resolver=34, borradores=31.
+- **Heurística:** SheetJS community SÍ soporta hojas ocultas (`Workbook.Sheets[].Hidden`),
+  `!autofilter` y `!cols`; freeze panes no es confiable → se omitió. Criterio "lo que
+  yo no registré" = origen automático de conciliación (no 'masivo' ni manual).
+- **Pendiente de confirmar:** si los eventos 'masivo' (registro en lote de MP) deben ir
+  también a la hoja oculta. Pulir vista por vista (ficha equipo, conciliación) es opcional.
+- **Dónde aplica:** build_app.py `exportExcel()`; CHANGELOG v0.32.
+
 <!-- Próximas entradas debajo de esta línea -->
