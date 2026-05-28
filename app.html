@@ -19,6 +19,13 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
 <script>var LZString=function(){var r=String.fromCharCode,o="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=",n="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-$",e={};function t(r,o){if(!e[r]){e[r]={};for(var n=0;n<r.length;n++)e[r][r.charAt(n)]=n}return e[r][o]}var i={compressToBase64:function(r){if(null==r)return"";var n=i._compress(r,6,function(r){return o.charAt(r)});switch(n.length%4){default:case 0:return n;case 1:return n+"===";case 2:return n+"==";case 3:return n+"="}},decompressFromBase64:function(r){return null==r?"":""==r?null:i._decompress(r.length,32,function(n){return t(o,r.charAt(n))})},compressToUTF16:function(o){return null==o?"":i._compress(o,15,function(o){return r(o+32)})+" "},decompressFromUTF16:function(r){return null==r?"":""==r?null:i._decompress(r.length,16384,function(o){return r.charCodeAt(o)-32})},compressToUint8Array:function(r){for(var o=i.compress(r),n=new Uint8Array(2*o.length),e=0,t=o.length;e<t;e++){var s=o.charCodeAt(e);n[2*e]=s>>>8,n[2*e+1]=s%256}return n},decompressFromUint8Array:function(o){if(null==o)return i.decompress(o);for(var n=new Array(o.length/2),e=0,t=n.length;e<t;e++)n[e]=256*o[2*e]+o[2*e+1];var s=[];return n.forEach(function(o){s.push(r(o))}),i.decompress(s.join(""))},compressToEncodedURIComponent:function(r){return null==r?"":i._compress(r,6,function(r){return n.charAt(r)})},decompressFromEncodedURIComponent:function(r){return null==r?"":""==r?null:(r=r.replace(/ /g,"+"),i._decompress(r.length,32,function(o){return t(n,r.charAt(o))}))},compress:function(o){return i._compress(o,16,function(o){return r(o)})},_compress:function(r,o,n){if(null==r)return"";var e,t,i,s={},u={},a="",p="",c="",l=2,f=3,h=2,d=[],m=0,v=0;for(i=0;i<r.length;i+=1)if(a=r.charAt(i),Object.prototype.hasOwnProperty.call(s,a)||(s[a]=f++,u[a]=!0),p=c+a,Object.prototype.hasOwnProperty.call(s,p))c=p;else{if(Object.prototype.hasOwnProperty.call(u,c)){if(c.charCodeAt(0)<256){for(e=0;e<h;e++)m<<=1,v==o-1?(v=0,d.push(n(m)),m=0):v++;for(t=c.charCodeAt(0),e=0;e<8;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1}else{for(t=1,e=0;e<h;e++)m=m<<1|t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t=0;for(t=c.charCodeAt(0),e=0;e<16;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1}0==--l&&(l=Math.pow(2,h),h++),delete u[c]}else for(t=s[c],e=0;e<h;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1;0==--l&&(l=Math.pow(2,h),h++),s[p]=f++,c=String(a)}if(""!==c){if(Object.prototype.hasOwnProperty.call(u,c)){if(c.charCodeAt(0)<256){for(e=0;e<h;e++)m<<=1,v==o-1?(v=0,d.push(n(m)),m=0):v++;for(t=c.charCodeAt(0),e=0;e<8;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1}else{for(t=1,e=0;e<h;e++)m=m<<1|t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t=0;for(t=c.charCodeAt(0),e=0;e<16;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1}0==--l&&(l=Math.pow(2,h),h++),delete u[c]}else for(t=s[c],e=0;e<h;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1;0==--l&&(l=Math.pow(2,h),h++)}for(t=2,e=0;e<h;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1;for(;;){if(m<<=1,v==o-1){d.push(n(m));break}v++}return d.join("")},decompress:function(r){return null==r?"":""==r?null:i._decompress(r.length,32768,function(o){return r.charCodeAt(o)})},_decompress:function(o,n,e){var t,i,s,u,a,p,c,l=[],f=4,h=4,d=3,m="",v=[],g={val:e(0),position:n,index:1};for(t=0;t<3;t+=1)l[t]=t;for(s=0,a=Math.pow(2,2),p=1;p!=a;)u=g.val&g.position,g.position>>=1,0==g.position&&(g.position=n,g.val=e(g.index++)),s|=(u>0?1:0)*p,p<<=1;switch(s){case 0:for(s=0,a=Math.pow(2,8),p=1;p!=a;)u=g.val&g.position,g.position>>=1,0==g.position&&(g.position=n,g.val=e(g.index++)),s|=(u>0?1:0)*p,p<<=1;c=r(s);break;case 1:for(s=0,a=Math.pow(2,16),p=1;p!=a;)u=g.val&g.position,g.position>>=1,0==g.position&&(g.position=n,g.val=e(g.index++)),s|=(u>0?1:0)*p,p<<=1;c=r(s);break;case 2:return""}for(l[3]=c,i=c,v.push(c);;){if(g.index>o)return"";for(s=0,a=Math.pow(2,d),p=1;p!=a;)u=g.val&g.position,g.position>>=1,0==g.position&&(g.position=n,g.val=e(g.index++)),s|=(u>0?1:0)*p,p<<=1;switch(c=s){case 0:for(s=0,a=Math.pow(2,8),p=1;p!=a;)u=g.val&g.position,g.position>>=1,0==g.position&&(g.position=n,g.val=e(g.index++)),s|=(u>0?1:0)*p,p<<=1;l[h++]=r(s),c=h-1,f--;break;case 1:for(s=0,a=Math.pow(2,16),p=1;p!=a;)u=g.val&g.position,g.position>>=1,0==g.position&&(g.position=n,g.val=e(g.index++)),s|=(u>0?1:0)*p,p<<=1;l[h++]=r(s),c=h-1,f--;break;case 2:return v.join("")}if(0==f&&(f=Math.pow(2,d),d++),l[c])m=l[c];else{if(c!==h)return null;m=i+i.charAt(0)}v.push(m),l[h++]=i+m.charAt(0),i=m,0==--f&&(f=Math.pow(2,d),d++)}}};return i}();"function"==typeof define&&define.amd?define(function(){return LZString}):"undefined"!=typeof module&&null!=module?module.exports=LZString:"undefined"!=typeof angular&&null!=angular&&angular.module("LZString",[]).factory("LZString",function(){return LZString});</script>
 <!--
 CHANGELOG
+v0.36 [2026-05-28] Barra lateral agrupada (Gestionar/Registrar) + accesos rápidos en Equipos.
+  - Barra lateral en dos grupos: GESTIONAR (Por resolver, Equipos, Resumen) y REGISTRAR
+    (MP del mes, Conciliación). Pendientes/Ciclos/Eventos salen del menú (siguen accesibles
+    desde "Por resolver" y la ficha del equipo) -> menos ruido.
+  - Equipos: botones de acceso rápido con conteo — "En servicio técnico (N)", "No operativos
+    (N)", "Con pendientes (N)", "Todos" — para responder al vuelo. En servicio técnico / no
+    operativo se muestra el encargado (encargadoDe: ingeniero del ciclo o último ejecutor).
 v0.35 [2026-05-28] Rediseño de navegación: barra lateral izquierda + columnas de Equipos.
   - El menú horizontal superior pasa a una BARRA LATERAL izquierda fija (oscura, estilo de
     la referencia del usuario): logo arriba, todos los apartados visibles con su contador,
@@ -99,7 +106,7 @@ v0.28 [2026-05-28] El folio del ciclo se preselecciona; aviso si no hay ciclo ab
     (antes era la misma expresión repetida 5 veces).
 v0.27 [2026-05-28] El número de versión del encabezado se sincroniza solo.
   - El encabezado mostraba "v0.23" fijo (escrito a mano), sin actualizarse al subir
-    APP_VERSION en versiones siguientes. Ahora usa el placeholder 0.35
+    APP_VERSION en versiones siguientes. Ahora usa el placeholder 0.36
     que build_app.py reemplaza con el valor real de APP_VERSION al generar: una
     sola fuente de verdad, no vuelve a quedar desfasado.
 v0.26 [2026-05-28] Cierre de ciclo por Recepción + Reparación "en servicio técnico".
@@ -501,11 +508,17 @@ textarea{min-height:64px;resize:vertical;font-family:inherit;line-height:1.5}
 .sidebar nav button:hover{background:#1e293b;color:#fff}
 .sidebar nav button.active{background:var(--accent);color:#fff;font-weight:600}
 .sidebar nav button .nav-badge{margin-left:auto;background:var(--noop);color:#fff;border-radius:99px;font-size:11px;font-weight:700;padding:1px 8px;min-width:18px;text-align:center;line-height:1.5}
+.sidebar .s-group{font-size:10px;font-weight:700;letter-spacing:.08em;color:#475569;text-transform:uppercase;padding:14px 12px 5px}
 .s-foot{padding:12px 16px;border-top:1px solid rgba(255,255,255,.08);font-size:12px;color:#94a3b8}
 .content{display:grid;grid-template-rows:48px 1fr;overflow:hidden;min-width:0}
 .topbar{display:flex;align-items:center;gap:6px;padding:0 18px;background:var(--surface);border-bottom:1px solid var(--border)}
 .topbar button{font-size:12.5px;padding:6px 10px;color:var(--muted);border:1px solid var(--border);border-radius:9px;background:var(--surface)}
 .topbar button:hover{color:var(--text);background:var(--surface-2)}
+.quick-access{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.qa-btn{font-size:13px;font-weight:600;padding:8px 14px;border-radius:99px;border:1px solid var(--border-strong);background:var(--surface);color:var(--text-2);cursor:pointer;transition:.12s}
+.qa-btn:hover{background:var(--surface-2);box-shadow:var(--shadow-sm)}
+.qa-btn.st{border-color:#ecd4a3;color:var(--st)}
+.qa-btn.noop{border-color:#f0c5c1;color:var(--noop)}
 header.top h1{font-size:14px;margin:0;font-weight:600;letter-spacing:-.01em}
 header.top h1 small{font-weight:400;color:var(--muted);margin-left:8px}
 header.top nav{display:flex;gap:0;flex:1;align-items:center;height:100%}
@@ -926,7 +939,7 @@ header.top nav .nav-more-menu button.active{background:var(--accent-soft);color:
 <body>
 <div class="app">
   <aside class="sidebar">
-    <div class="s-logo">HHHA <small>Equipos Críticos · v0.35</small></div>
+    <div class="s-logo">HHHA <small>Equipos Críticos · v0.36</small></div>
     <nav id="nav"></nav>
     <div class="s-foot"><span class="user-tag">👤 Cristian</span></div>
   </aside>
@@ -974,7 +987,7 @@ const SEED = {"equipos":[{"id":1,"carpeta":1,"inv":"2-115361","fam":"Incubadoras
 //==============================================================
 // CONSTANTES & CATÁLOGOS
 //==============================================================
-const APP_VERSION = '0.35';
+const APP_VERSION = '0.36';
 const STORAGE_KEY = 'hhha_v1_data';
 const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 const MES_NUM = {Ene:0,Feb:1,Mar:2,Abr:3,May:4,Jun:5,Jul:6,Ago:7,Sep:8,Oct:9,Nov:10,Dic:11};
@@ -1286,6 +1299,14 @@ function pendientesDe(inv){ return state.pendientes.filter(p => p.inv === inv &&
 function conflictosDe(inv){ return (state.conflictos||[]).filter(c => c.inv === inv && (c.estado === 'pendiente' || c.estado === 'pospuesto')); }
 function ciclosDe(inv){ return state.ciclos.filter(c => c.inv === inv); }
 function ciclosAbiertosDe(inv){ return state.ciclos.filter(c => c.inv === inv && c.estado === 'abierto'); }
+// Encargado actual del equipo: ingeniero del ciclo abierto o, si no, el último ejecutor.
+function encargadoDe(equipo){
+  const c = ciclosAbiertosDe(equipo.inv)[0];
+  if(c && c.ingenieroAsignado) return c.ingenieroAsignado;
+  const evs = eventosDe(equipo.inv);
+  for(let i = evs.length-1; i >= 0; i--){ if(evs[i].ejecutor) return evs[i].ejecutor; }
+  return null;
+}
 
 // Mapeo de causal de MP de la carta gantt -> estado operativo del equipo.
 // C2 = en servicio técnico, C3 = no operativo (espera repuestos), FS/NU = no operativo, Baja = baja.
@@ -2214,7 +2235,7 @@ VIEWS.equipos = function(root, params){
         el('td',{}, e.proc||'—'),
         el('td',{}, e.marca||'—'),
         el('td',{}, e.modelo||'—'),
-        el('td',{}, badgeEstado(e.estado)),
+        el('td',{}, badgeEstado(e.estado), (e.estado==='en_servicio_tecnico'||e.estado==='no_operativo') ? el('div',{style:{marginTop:'3px'}}, el('small',{class:'muted'}, 'Enc: '+(encargadoDe(e)||'—'))) : null),
         el('td',{class:'num'}, pend > 0 ? el('span',{class:'badge abierto'},pend) : el('small',{class:'muted'},'—')),
         el('td',{class:'num'}, e.estadoDesde ? diasEnEstado(e)+' d' : el('small',{class:'muted'},'—'))
       ));
@@ -2249,9 +2270,18 @@ VIEWS.equipos = function(root, params){
 
   [search,selServicio,selEstado,selPend].forEach(i => i.addEventListener('input', render));
 
+  state.equipos.forEach(recalcEstadoEquipo);
+  const _qa = (lbl, n, fn, cls) => el('button',{class:'qa-btn'+(cls?' '+cls:''), onclick:fn}, `${lbl} (${n})`);
+  const barraQA = el('div',{class:'quick-access'},
+    el('button',{class:'qa-btn',onclick:()=>{selEstado.value='';selPend.value='';delete params.estado;render();}},'Todos'),
+    _qa('En servicio técnico', state.equipos.filter(e=>e.estado==='en_servicio_tecnico').length, ()=>{selEstado.value='en_servicio_tecnico';render();}, 'st'),
+    _qa('No operativos', state.equipos.filter(e=>e.estado==='no_operativo').length, ()=>{selEstado.value='no_operativo';render();}, 'noop'),
+    _qa('Con pendientes', state.equipos.filter(e=>pendientesDe(e.inv).some(p=>p.estado!=='cerrado')).length, ()=>{selPend.value='si';render();})
+  );
   root.appendChild(el('div',{class:'view'},
     el('h2',{},'Equipos'),
-    el('div',{class:'subtitle'},'Maestro de equipos biomédicos críticos.'),
+    el('div',{class:'subtitle'},'Maestro de equipos biomédicos críticos. Usa los accesos rápidos o busca por equipo, marca, modelo o servicio.'),
+    barraQA,
     el('div',{class:'toolbar'},
       el('div',{class:'grow'},search),
       selServicio, selEstado, selPend
@@ -5540,8 +5570,12 @@ setInterval(()=>{ if(recorder.status==='recording') recorder.updateUI(); }, 1000
 //==============================================================
 // INIT
 //==============================================================
-const NAV_PRINCIPAL = [['porResolver','Por resolver'],['equipos','Equipos'],['conciliacion','Conciliación'],['mp','MP del mes']];
-const NAV_SECUNDARIO = [['dashboard','Resumen'],['pendientes','Pendientes'],['ciclos','Ciclos correctivos'],['eventos','Eventos']];
+// Barra lateral agrupada en los dos momentos del trabajo. Pendientes/Ciclos/Eventos
+// no van en el menú: se acceden desde "Por resolver" y desde la ficha del equipo.
+const NAV_GRUPOS = [
+  ['GESTIONAR', [['porResolver','Por resolver'],['equipos','Equipos'],['dashboard','Resumen']]],
+  ['REGISTRAR', [['mp','MP del mes'],['conciliacion','Conciliación']]]
+];
 function navBadge(k, b){
   if(k === 'porResolver'){
     const n = state.pendientes.filter(p=>!p.anulado && p.estado!=='cerrado').length;
@@ -5555,11 +5589,13 @@ function navBadge(k, b){
 function buildNav(){
   const nav = $('#nav');
   nav.innerHTML = '';
-  // En la barra lateral hay espacio vertical: se muestran todos los apartados.
-  [...NAV_PRINCIPAL, ...NAV_SECUNDARIO].forEach(([k,l])=>{
-    const b = el('button',{'data-view':k,onclick:()=>navigate(k)}, l);
-    navBadge(k,b);
-    nav.appendChild(b);
+  NAV_GRUPOS.forEach(([titulo, items])=>{
+    nav.appendChild(el('div',{class:'s-group'}, titulo));
+    items.forEach(([k,l])=>{
+      const b = el('button',{'data-view':k,onclick:()=>navigate(k)}, l);
+      navBadge(k,b);
+      nav.appendChild(b);
+    });
   });
 }
 function refreshNav(){

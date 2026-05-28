@@ -409,4 +409,23 @@
 - **Dónde aplica:** build_app.py (HTML app/sidebar, CSS layout, `buildNav`/`refreshNav`,
   `VIEWS.equipos`); CHANGELOG v0.35.
 
+## [2026-05-28] Sidebar agrupado + Equipos como centro de consulta (v0.36)
+
+- **Disparador:** el usuario pidió simplificar (menos ventanas/redundancia), separar sus 2
+  momentos (registrar / gestionar) y poder responder preguntas al vuelo (equipos en servicio
+  técnico, cuántos monitores por servicio, qué MP falta por ejecutor).
+- **Hallazgo clave:** la tabla Equipos YA respondía esas preguntas (búsqueda + filtros);
+  faltaba hacerlo evidente. Demostrado con sus datos: 15 en servicio técnico; 77 monitores en
+  Medicina, 53 en UPC Adulto, etc. → no se inventó, se hizo más directo.
+- **Hecho:** barra lateral en 2 grupos (GESTIONAR: Por resolver, Equipos, Resumen / REGISTRAR:
+  MP del mes, Conciliación). Pendientes/Ciclos/Eventos salen del menú (siguen accesibles). En
+  Equipos, accesos rápidos con conteo (En servicio técnico / No operativos / Con pendientes /
+  Todos) y, para no operativo / servicio técnico, el encargado (`encargadoDe`).
+- **Pendiente de esta propuesta:** unificar las 3 ventanas de un evento (editar/anular/
+  oficializar) en una sola — es el refactor más delicado, se hará aparte y verificado.
+- **Heurística:** antes de "agregar para responder una pregunta", verificar si los filtros
+  existentes ya la responden; muchas veces el problema es visibilidad, no falta de función.
+- **Dónde aplica:** build_app.py (`NAV_GRUPOS`, `buildNav`, `encargadoDe`, `VIEWS.equipos`
+  accesos rápidos, CSS sidebar/quick-access); CHANGELOG v0.36.
+
 <!-- Próximas entradas debajo de esta línea -->

@@ -17,6 +17,13 @@ HTML = r"""<!DOCTYPE html>
 <script>__LZSTRING_PLACEHOLDER__</script>
 <!--
 CHANGELOG
+v0.36 [2026-05-28] Barra lateral agrupada (Gestionar/Registrar) + accesos rápidos en Equipos.
+  - Barra lateral en dos grupos: GESTIONAR (Por resolver, Equipos, Resumen) y REGISTRAR
+    (MP del mes, Conciliación). Pendientes/Ciclos/Eventos salen del menú (siguen accesibles
+    desde "Por resolver" y la ficha del equipo) -> menos ruido.
+  - Equipos: botones de acceso rápido con conteo — "En servicio técnico (N)", "No operativos
+    (N)", "Con pendientes (N)", "Todos" — para responder al vuelo. En servicio técnico / no
+    operativo se muestra el encargado (encargadoDe: ingeniero del ciclo o último ejecutor).
 v0.35 [2026-05-28] Rediseño de navegación: barra lateral izquierda + columnas de Equipos.
   - El menú horizontal superior pasa a una BARRA LATERAL izquierda fija (oscura, estilo de
     la referencia del usuario): logo arriba, todos los apartados visibles con su contador,
@@ -499,11 +506,17 @@ textarea{min-height:64px;resize:vertical;font-family:inherit;line-height:1.5}
 .sidebar nav button:hover{background:#1e293b;color:#fff}
 .sidebar nav button.active{background:var(--accent);color:#fff;font-weight:600}
 .sidebar nav button .nav-badge{margin-left:auto;background:var(--noop);color:#fff;border-radius:99px;font-size:11px;font-weight:700;padding:1px 8px;min-width:18px;text-align:center;line-height:1.5}
+.sidebar .s-group{font-size:10px;font-weight:700;letter-spacing:.08em;color:#475569;text-transform:uppercase;padding:14px 12px 5px}
 .s-foot{padding:12px 16px;border-top:1px solid rgba(255,255,255,.08);font-size:12px;color:#94a3b8}
 .content{display:grid;grid-template-rows:48px 1fr;overflow:hidden;min-width:0}
 .topbar{display:flex;align-items:center;gap:6px;padding:0 18px;background:var(--surface);border-bottom:1px solid var(--border)}
 .topbar button{font-size:12.5px;padding:6px 10px;color:var(--muted);border:1px solid var(--border);border-radius:9px;background:var(--surface)}
 .topbar button:hover{color:var(--text);background:var(--surface-2)}
+.quick-access{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.qa-btn{font-size:13px;font-weight:600;padding:8px 14px;border-radius:99px;border:1px solid var(--border-strong);background:var(--surface);color:var(--text-2);cursor:pointer;transition:.12s}
+.qa-btn:hover{background:var(--surface-2);box-shadow:var(--shadow-sm)}
+.qa-btn.st{border-color:#ecd4a3;color:var(--st)}
+.qa-btn.noop{border-color:#f0c5c1;color:var(--noop)}
 header.top h1{font-size:14px;margin:0;font-weight:600;letter-spacing:-.01em}
 header.top h1 small{font-weight:400;color:var(--muted);margin-left:8px}
 header.top nav{display:flex;gap:0;flex:1;align-items:center;height:100%}
@@ -972,7 +985,7 @@ const SEED = __SEED_PLACEHOLDER__;
 //==============================================================
 // CONSTANTES & CATÁLOGOS
 //==============================================================
-const APP_VERSION = '0.35';
+const APP_VERSION = '0.36';
 const STORAGE_KEY = 'hhha_v1_data';
 const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 const MES_NUM = {Ene:0,Feb:1,Mar:2,Abr:3,May:4,Jun:5,Jul:6,Ago:7,Sep:8,Oct:9,Nov:10,Dic:11};
@@ -1284,6 +1297,14 @@ function pendientesDe(inv){ return state.pendientes.filter(p => p.inv === inv &&
 function conflictosDe(inv){ return (state.conflictos||[]).filter(c => c.inv === inv && (c.estado === 'pendiente' || c.estado === 'pospuesto')); }
 function ciclosDe(inv){ return state.ciclos.filter(c => c.inv === inv); }
 function ciclosAbiertosDe(inv){ return state.ciclos.filter(c => c.inv === inv && c.estado === 'abierto'); }
+// Encargado actual del equipo: ingeniero del ciclo abierto o, si no, el último ejecutor.
+function encargadoDe(equipo){
+  const c = ciclosAbiertosDe(equipo.inv)[0];
+  if(c && c.ingenieroAsignado) return c.ingenieroAsignado;
+  const evs = eventosDe(equipo.inv);
+  for(let i = evs.length-1; i >= 0; i--){ if(evs[i].ejecutor) return evs[i].ejecutor; }
+  return null;
+}
 
 // Mapeo de causal de MP de la carta gantt -> estado operativo del equipo.
 // C2 = en servicio técnico, C3 = no operativo (espera repuestos), FS/NU = no operativo, Baja = baja.
@@ -2212,7 +2233,7 @@ VIEWS.equipos = function(root, params){
         el('td',{}, e.proc||'—'),
         el('td',{}, e.marca||'—'),
         el('td',{}, e.modelo||'—'),
-        el('td',{}, badgeEstado(e.estado)),
+        el('td',{}, badgeEstado(e.estado), (e.estado==='en_servicio_tecnico'||e.estado==='no_operativo') ? el('div',{style:{marginTop:'3px'}}, el('small',{class:'muted'}, 'Enc: '+(encargadoDe(e)||'—'))) : null),
         el('td',{class:'num'}, pend > 0 ? el('span',{class:'badge abierto'},pend) : el('small',{class:'muted'},'—')),
         el('td',{class:'num'}, e.estadoDesde ? diasEnEstado(e)+' d' : el('small',{class:'muted'},'—'))
       ));
@@ -2247,9 +2268,18 @@ VIEWS.equipos = function(root, params){
 
   [search,selServicio,selEstado,selPend].forEach(i => i.addEventListener('input', render));
 
+  state.equipos.forEach(recalcEstadoEquipo);
+  const _qa = (lbl, n, fn, cls) => el('button',{class:'qa-btn'+(cls?' '+cls:''), onclick:fn}, `${lbl} (${n})`);
+  const barraQA = el('div',{class:'quick-access'},
+    el('button',{class:'qa-btn',onclick:()=>{selEstado.value='';selPend.value='';delete params.estado;render();}},'Todos'),
+    _qa('En servicio técnico', state.equipos.filter(e=>e.estado==='en_servicio_tecnico').length, ()=>{selEstado.value='en_servicio_tecnico';render();}, 'st'),
+    _qa('No operativos', state.equipos.filter(e=>e.estado==='no_operativo').length, ()=>{selEstado.value='no_operativo';render();}, 'noop'),
+    _qa('Con pendientes', state.equipos.filter(e=>pendientesDe(e.inv).some(p=>p.estado!=='cerrado')).length, ()=>{selPend.value='si';render();})
+  );
   root.appendChild(el('div',{class:'view'},
     el('h2',{},'Equipos'),
-    el('div',{class:'subtitle'},'Maestro de equipos biomédicos críticos.'),
+    el('div',{class:'subtitle'},'Maestro de equipos biomédicos críticos. Usa los accesos rápidos o busca por equipo, marca, modelo o servicio.'),
+    barraQA,
     el('div',{class:'toolbar'},
       el('div',{class:'grow'},search),
       selServicio, selEstado, selPend
@@ -5538,8 +5568,12 @@ setInterval(()=>{ if(recorder.status==='recording') recorder.updateUI(); }, 1000
 //==============================================================
 // INIT
 //==============================================================
-const NAV_PRINCIPAL = [['porResolver','Por resolver'],['equipos','Equipos'],['conciliacion','Conciliación'],['mp','MP del mes']];
-const NAV_SECUNDARIO = [['dashboard','Resumen'],['pendientes','Pendientes'],['ciclos','Ciclos correctivos'],['eventos','Eventos']];
+// Barra lateral agrupada en los dos momentos del trabajo. Pendientes/Ciclos/Eventos
+// no van en el menú: se acceden desde "Por resolver" y desde la ficha del equipo.
+const NAV_GRUPOS = [
+  ['GESTIONAR', [['porResolver','Por resolver'],['equipos','Equipos'],['dashboard','Resumen']]],
+  ['REGISTRAR', [['mp','MP del mes'],['conciliacion','Conciliación']]]
+];
 function navBadge(k, b){
   if(k === 'porResolver'){
     const n = state.pendientes.filter(p=>!p.anulado && p.estado!=='cerrado').length;
@@ -5553,11 +5587,13 @@ function navBadge(k, b){
 function buildNav(){
   const nav = $('#nav');
   nav.innerHTML = '';
-  // En la barra lateral hay espacio vertical: se muestran todos los apartados.
-  [...NAV_PRINCIPAL, ...NAV_SECUNDARIO].forEach(([k,l])=>{
-    const b = el('button',{'data-view':k,onclick:()=>navigate(k)}, l);
-    navBadge(k,b);
-    nav.appendChild(b);
+  NAV_GRUPOS.forEach(([titulo, items])=>{
+    nav.appendChild(el('div',{class:'s-group'}, titulo));
+    items.forEach(([k,l])=>{
+      const b = el('button',{'data-view':k,onclick:()=>navigate(k)}, l);
+      navBadge(k,b);
+      nav.appendChild(b);
+    });
   });
 }
 function refreshNav(){
