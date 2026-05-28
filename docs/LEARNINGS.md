@@ -325,4 +325,31 @@
   también a la hoja oculta. Pulir vista por vista (ficha equipo, conciliación) es opcional.
 - **Dónde aplica:** build_app.py `exportExcel()`; CHANGELOG v0.32.
 
+## [2026-05-28] BUG MP del mes: la realización vive en la matriz, no en eventos (v0.33)
+
+- **Disparador:** el usuario filtró Febrero + Pendientes y aparecían equipos cuya MP YA
+  estaba hecha en la carta gantt (`registro.Feb.R='Si'`) pero sin evento. "Se hicieron en
+  febrero, no son pendientes."
+- **Confirmado con su backup real:** `mpDelMesEjecutada` miraba SOLO eventos. Equipo
+  2-116070 tenía `registro.Feb.R='Si'` sin evento MP en feb → contado como pendiente. A
+  nivel febrero: **300 "pendientes" falsos de 301** programadas (casi todo, porque su
+  realización vive en la matriz, no en eventos uno a uno).
+- **Hecho:** `resultadoMPMes()` y `mpEstadoMes()` consideran AMBAS fuentes (evento del mes
+  + matriz `registro[mes].R` del año vigente). Estados: ejecutada (Si) / reprogramada
+  (C1-C8) / otro (FS,NU,Baja,No) / pendiente (nada). `mpDelMesEjecutada` deriva de
+  `mpEstadoMes`. Aplicado en `renderSumMesesMP`, `renderSumEjecutoresMP`, ficha del equipo
+  y `VIEWS.mp` (filtro + etiqueta). El filtro "Reprogramadas" pasa a mirar el resultado.
+  Validado: 2-116070 feb → ejecutada; febrero 247 ejecutadas / 51 reprog / 1 pendiente.
+- **Heurística:** cuando un dato existe en DOS representaciones (matriz agregada de la
+  carta gantt vs eventos individuales), toda lógica de "hecho/pendiente" debe consultar
+  ambas mediante UN helper. El usuario registra la realización en la matriz (al subir el
+  maestro), no como eventos uno a uno: por eso el bug era masivo.
+- **Mejoras:** MP del mes con flechas ‹ › + selector de año (antes el año quedaba fijo).
+  Grabador: captura los avisos/toasts (resultado de cada acción), el cambio de filtros con
+  la opción elegida, y más contexto de estado (conflictos, borradores, por resolver).
+- **Limitación:** la matriz `registro` no guarda año; se asume el año vigente. Navegar a
+  otro año usa solo eventos. (A revisar si algún día se maneja multi-año en la matriz.)
+- **Dónde aplica:** build_app.py (`resultadoMPMes`/`mpEstadoMes`/`mpDelMesEjecutada`,
+  `renderSumMesesMP`, `renderSumEjecutoresMP`, `VIEWS.mp`, `recorder`, `toast`); CHANGELOG v0.33.
+
 <!-- Próximas entradas debajo de esta línea -->

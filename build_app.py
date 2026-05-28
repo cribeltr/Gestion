@@ -17,6 +17,18 @@ HTML = r"""<!DOCTYPE html>
 <script>__LZSTRING_PLACEHOLDER__</script>
 <!--
 CHANGELOG
+v0.33 [2026-05-28] Fix MP del mes (carta gantt + eventos), navegación de meses/año, grabador.
+  - BUG: la MP del mes se consideraba "pendiente" mirando SOLO eventos, ignorando la
+    matriz registro[mes].R (carta gantt). Un equipo con la MP marcada en la gantt pero
+    sin evento aparecía como pendiente. Ahora resultadoMPMes() / mpEstadoMes() consideran
+    AMBAS fuentes (evento del mes y matriz del año vigente). Estados: ejecutada (Si) /
+    reprogramada (C1-C8) / otro (FS,NU,Baja,No) / pendiente (nada). Aplicado en el Resumen
+    (por mes y por ejecutor), la ficha del equipo y la vista MP del mes (filtro +
+    etiqueta). mpDelMesEjecutada ahora deriva de mpEstadoMes.
+  - El filtro "Reprogramadas" mira el resultado (C1-C8), no la programación.
+  - MP del mes: navegación con flechas y selector de año (antes el año quedaba fijo).
+  - Grabador: captura todos los avisos (resultado de acciones), el cambio de filtros con
+    la opción elegida, y más contexto de estado (conflictos, borradores, por resolver).
 v0.32 [2026-05-28] Excel autónomo: hoja oculta para lo automático + guía + "Por resolver".
   - exportExcel() reestructurado para que el archivo sirva como respaldo de trabajo
     sin el programa:
@@ -928,7 +940,7 @@ const SEED = __SEED_PLACEHOLDER__;
 //==============================================================
 // CONSTANTES & CATÁLOGOS
 //==============================================================
-const APP_VERSION = '0.32';
+const APP_VERSION = '0.33';
 const STORAGE_KEY = 'hhha_v1_data';
 const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 const MES_NUM = {Ene:0,Feb:1,Mar:2,Abr:3,May:4,Jun:5,Jul:6,Ago:7,Sep:8,Oct:9,Nov:10,Dic:11};
@@ -1277,10 +1289,30 @@ function diasEnEstado(equipo){
   return Math.max(0, diasEntreFechas(equipo.estadoDesde, hoyLocal()));
 }
 
-function mpDelMesEjecutada(equipo, year, month){
-  // ¿existe evento MP en ese mes y año?
-  return state.eventos.some(e => e.inv === equipo.inv && e.tipo === 'Mantención preventiva' && !e.anulado &&
+// Resultado de la MP del mes considerando AMBAS fuentes: el evento MP del mes (su
+// resultado) y la matriz registro[mes].R de la carta gantt (para el año vigente).
+// Devuelve el código ('Si','C1'..'C8','FS','NU','Baja','No') o null si no hay nada.
+function resultadoMPMes(equipo, year, month){
+  const ev = state.eventos.find(e => e.inv === equipo.inv && e.tipo === 'Mantención preventiva' && !e.anulado &&
     e.fecha && new Date(e.fecha + 'T00:00:00').getFullYear() === year && new Date(e.fecha + 'T00:00:00').getMonth() === month);
+  if(ev) return ev.resultado || 'Si';
+  if(year === new Date().getFullYear()){
+    const r = ((equipo.registro||{})[NUM_MES[month]]||{}).R;
+    if(r) return r;
+  }
+  return null;
+}
+// Estado de la MP del mes: ejecutada (Si) / reprogramada (C1-C8) / otro (FS,NU,Baja,No) / pendiente (nada).
+function mpEstadoMes(equipo, year, month){
+  const r = resultadoMPMes(equipo, year, month);
+  if(r === 'Si') return 'ejecutada';
+  if(/^C[1-8]$/.test(r||'')) return 'reprogramada';
+  if(r) return 'otro';
+  return 'pendiente';
+}
+function mpDelMesEjecutada(equipo, year, month){
+  // "Ejecutada" = MP realizada (resultado Si), ya sea por evento o por la carta gantt.
+  return mpEstadoMes(equipo, year, month) === 'ejecutada';
 }
 
 function mpProgramadaEnMes(equipo, mes){
@@ -1473,9 +1505,9 @@ function toast(msg, type='', action){
   }
   $('#toast-root').appendChild(t);
   setTimeout(()=>t.remove(), 4000);
-  // Captura para análisis: errores y warnings son señales útiles
-  if(type === 'error' && typeof recorder !== 'undefined' && recorder.status === 'recording'){
-    recorder.event('form_error', {mensaje: String(msg).slice(0,180)});
+  // Captura para análisis: todo aviso es señal del RESULTADO de una acción.
+  if(typeof recorder !== 'undefined' && recorder.status === 'recording'){
+    recorder.event(type === 'error' ? 'form_error' : 'toast', {mensaje: String(msg).slice(0,180), kind: type||'info'});
   }
 }
 function badgeEstado(estado){
@@ -1895,7 +1927,7 @@ function renderSumMesesMP(year, returnParts){
     const ejecutadas = mpProgEquipos.filter(eq => mpDelMesEjecutada(eq, year, monthIdx)).length;
     const asignadas = conAsig.length;
     const sinAsignar = mpProgEquipos.length - asignadas;
-    const pendientes = mpProgEquipos.length - ejecutadas;
+    const pendientes = mpProgEquipos.filter(eq => mpEstadoMes(eq, year, monthIdx) === 'pendiente').length;
     const pct = mpProgEquipos.length === 0 ? null : Math.round(ejecutadas / mpProgEquipos.length * 100);
     return {mes, monthIdx, programadas: mpProgEquipos.length, asignadas, sinAsignar, ejecutadas, pendientes, pct};
   });
@@ -1960,7 +1992,7 @@ function renderSumEjecutoresMP(year, monthIdx, returnParts){
   const rows = EJECUTORES.map(ej => {
     const asignados = mpProgEquipos.filter(eq => state.asignacionesMP[keyMes][eq.inv] === ej);
     const ejecutadas = asignados.filter(eq => mpDelMesEjecutada(eq, year, monthIdx)).length;
-    const pendientes = asignados.length - ejecutadas;
+    const pendientes = asignados.filter(eq => mpEstadoMes(eq, year, monthIdx) === 'pendiente').length;
     const pct = asignados.length === 0 ? null : Math.round(ejecutadas / asignados.length * 100);
     return {ejecutor:ej, asignadas:asignados.length, ejecutadas, pendientes, pct};
   });
@@ -2638,11 +2670,23 @@ VIEWS.mp = function(root, params){
   const keyMes = ()=> `${year}-${String(monthIdx+1).padStart(2,'0')}`;
   state.asignacionesMP[keyMes()] = state.asignacionesMP[keyMes()] || {};
 
-  const selMes = el('select',{},
-    ...NUM_MES.map((m,i)=>el('option',{value:i,selected:i===monthIdx?'':false}, `${m} ${year}`))
-  );
+  const ANIOS = [year-1, year, year+1];
+  const selMes = el('select',{}, ...NUM_MES.map((m,i)=>el('option',{value:i}, m)));
   selMes.value = monthIdx;
+  const selAnio = el('select',{}, ...ANIOS.map(a=>el('option',{value:a}, String(a))));
+  selAnio.value = year;
+  function irAMes(d){
+    monthIdx += d;
+    if(monthIdx > 11){ monthIdx = 0; year++; }
+    if(monthIdx < 0){ monthIdx = 11; year--; }
+    if(year < ANIOS[0]) year = ANIOS[0];
+    if(year > ANIOS[ANIOS.length-1]) year = ANIOS[ANIOS.length-1];
+    selMes.value = monthIdx; selAnio.value = year; render();
+  }
   selMes.onchange = ()=>{ monthIdx = +selMes.value; render(); };
+  selAnio.onchange = ()=>{ year = +selAnio.value; render(); };
+  const btnPrevMes = el('button',{class:'small',title:'Mes anterior',onclick:()=>irAMes(-1)},'‹');
+  const btnNextMes = el('button',{class:'small',title:'Mes siguiente',onclick:()=>irAMes(1)},'›');
 
   const selExec = el('select',{},
     el('option',{value:''},'Todos los ejecutores'),
@@ -2653,7 +2697,7 @@ VIEWS.mp = function(root, params){
     el('option',{value:''},'Todos'),
     el('option',{value:'ejec',selected:params.estadoMP==='ejec'?'selected':false},'Ejecutadas'),
     el('option',{value:'pend',selected:params.estadoMP==='pend'?'selected':false},'Pendientes'),
-    el('option',{value:'reprog'},'Reprogramadas (R en P)'),
+    el('option',{value:'reprog'},'Reprogramadas (C1–C8)'),
     el('option',{value:'sinAsignar',selected:params.sinAsignar?'selected':false},'Sin asignar')
   );
   if(params.estadoMP) selEst.value = params.estadoMP;
@@ -2708,17 +2752,17 @@ VIEWS.mp = function(root, params){
     lista = lista.filter(eq => {
       const ej = ((state.asignacionesMP[keyMes()]||{})[eq.inv])||null;
       if(fExec && ej !== fExec) return false;
-      const ejec = mpDelMesEjecutada(eq, year, monthIdx);
-      if(fEst === 'ejec' && !ejec) return false;
-      if(fEst === 'pend' && ejec) return false;
-      if(fEst === 'reprog' && (eq.prog||{})[m] !== 'R') return false;
+      const est = mpEstadoMes(eq, year, monthIdx);
+      if(fEst === 'ejec' && est !== 'ejecutada') return false;
+      if(fEst === 'pend' && est !== 'pendiente') return false;
+      if(fEst === 'reprog' && est !== 'reprogramada') return false;
       if(fEst === 'sinAsignar' && ej) return false;
       return true;
     });
 
     tbody.innerHTML = '';
     lista.forEach(eq => {
-      const ejecutada = mpDelMesEjecutada(eq, year, monthIdx);
+      const est = mpEstadoMes(eq, year, monthIdx);
       state.asignacionesMP[keyMes()] = state.asignacionesMP[keyMes()] || {};
       const asign = state.asignacionesMP[keyMes()][eq.inv] || '';
       const selA = el('select',{onchange:e=>asignar(eq.inv,e.target.value)},
@@ -2737,9 +2781,12 @@ VIEWS.mp = function(root, params){
         el('td',{}, el('span',{class:'badge mp-cause'}, (eq.prog||{})[m])),
         el('td',{}, eq.freq||'—'),
         el('td',{}, selA),
-        el('td',{}, ejecutada ? el('span',{class:'badge mp-si'},'Ejecutada') : el('span',{class:'badge mp-no'},'Pendiente')),
+        el('td',{}, est==='ejecutada' ? el('span',{class:'badge mp-si'},'Ejecutada')
+                  : est==='reprogramada' ? el('span',{class:'badge st'},'Reprogramada')
+                  : est==='otro' ? el('span',{class:'badge'}, resultadoMPMes(eq, year, monthIdx)||'—')
+                  : el('span',{class:'badge mp-no'},'Pendiente')),
         el('td',{class:'actions'},
-          el('button',{class:'small primary',onclick:()=>mpRapida({invDefault:eq.inv, fechaDefault:fechaSugeridaMP(year, monthIdx)})}, ejecutada?'➕ MP':'➕ Registrar MP'),
+          el('button',{class:'small primary',onclick:()=>mpRapida({invDefault:eq.inv, fechaDefault:fechaSugeridaMP(year, monthIdx)})}, est==='ejecutada'?'➕ MP':'➕ Registrar MP'),
           el('button',{class:'small ghost',onclick:()=>navigate('equipo',{inv:eq.inv})},'Ficha')
         )
       ));
@@ -2774,7 +2821,7 @@ VIEWS.mp = function(root, params){
       )
     ),
     el('div',{class:'subtitle'},'Selecciona mes, asigna ejecutor y registra el evento al recibir la documentación. Marca varios y usa "Registrar MP a todos" para batch. Se excluyen equipos con FS/Baja/NU en meses previos.'),
-    el('div',{class:'toolbar'}, selMes, selExec, selEst, btnSelTodos, counter),
+    el('div',{class:'toolbar'}, btnPrevMes, selMes, selAnio, btnNextMes, selExec, selEst, btnSelTodos, counter),
     bulkBar,
     el('div',{style:{maxHeight:'calc(100vh - 280px)',overflow:'auto',border:'1px solid var(--border)',borderRadius:'6px'}},
       el('table',{class:'data',style:{border:'none'}},
@@ -5206,6 +5253,12 @@ const recorder = {
       if(e.target.type === 'password') return;
       this.event('input', this.descTarget(e.target), e);
     }, true);
+    // 'change' captura el cambio de filtros/selects con la opción elegida.
+    document.addEventListener('change', e=>{
+      if(this.status !== 'recording') return;
+      if(e.target.closest('#rec-widget')) return;
+      if(e.target.tagName === 'SELECT') this.event('change', this.descTarget(e.target));
+    }, true);
     document.addEventListener('focusin', e=>{
       if(this.status !== 'recording') return;
       if(e.target.closest('#rec-widget')) return;
@@ -5271,10 +5324,11 @@ const recorder = {
     const text = (t.innerText||t.textContent||'').trim().slice(0,80);
     const value = (t.type !== 'password' && t.value != null) ? String(t.value).slice(0,200) : undefined;
     const rect = t.getBoundingClientRect ? t.getBoundingClientRect() : null;
+    const opcion = (tag === 'select' && t.selectedOptions && t.selectedOptions[0]) ? t.selectedOptions[0].textContent.trim().slice(0,60) : undefined;
     return {
       selector: this.selector(t),
       tag, id, cls, textoVisible: text,
-      valor: value,
+      valor: value, opcion,
       coords: rect ? {x: Math.round(rect.x), y: Math.round(rect.y), w:Math.round(rect.width), h:Math.round(rect.height)} : null
     };
   },
@@ -5315,7 +5369,10 @@ const recorder = {
         equipos: state.equipos.length,
         eventos: state.eventos.length,
         pendientes: state.pendientes.length,
-        ciclosAbiertos: state.ciclos.filter(c=>c.estado==='abierto').length
+        ciclosAbiertos: state.ciclos.filter(c=>c.estado==='abierto').length,
+        conflictosPend: (state.conflictos||[]).filter(c=>c.estado==='pendiente'||c.estado==='pospuesto').length,
+        borradores: state.eventos.filter(e=>e.oficial!=='Sí' && !e.anulado).length,
+        pendPorResolver: state.pendientes.filter(p=>!p.anulado && p.estado!=='cerrado').length
       }
     };
     if(raw && raw.clientX != null) ev.click = {x:raw.clientX, y:raw.clientY};

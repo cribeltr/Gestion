@@ -19,6 +19,18 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
 <script>var LZString=function(){var r=String.fromCharCode,o="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=",n="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-$",e={};function t(r,o){if(!e[r]){e[r]={};for(var n=0;n<r.length;n++)e[r][r.charAt(n)]=n}return e[r][o]}var i={compressToBase64:function(r){if(null==r)return"";var n=i._compress(r,6,function(r){return o.charAt(r)});switch(n.length%4){default:case 0:return n;case 1:return n+"===";case 2:return n+"==";case 3:return n+"="}},decompressFromBase64:function(r){return null==r?"":""==r?null:i._decompress(r.length,32,function(n){return t(o,r.charAt(n))})},compressToUTF16:function(o){return null==o?"":i._compress(o,15,function(o){return r(o+32)})+" "},decompressFromUTF16:function(r){return null==r?"":""==r?null:i._decompress(r.length,16384,function(o){return r.charCodeAt(o)-32})},compressToUint8Array:function(r){for(var o=i.compress(r),n=new Uint8Array(2*o.length),e=0,t=o.length;e<t;e++){var s=o.charCodeAt(e);n[2*e]=s>>>8,n[2*e+1]=s%256}return n},decompressFromUint8Array:function(o){if(null==o)return i.decompress(o);for(var n=new Array(o.length/2),e=0,t=n.length;e<t;e++)n[e]=256*o[2*e]+o[2*e+1];var s=[];return n.forEach(function(o){s.push(r(o))}),i.decompress(s.join(""))},compressToEncodedURIComponent:function(r){return null==r?"":i._compress(r,6,function(r){return n.charAt(r)})},decompressFromEncodedURIComponent:function(r){return null==r?"":""==r?null:(r=r.replace(/ /g,"+"),i._decompress(r.length,32,function(o){return t(n,r.charAt(o))}))},compress:function(o){return i._compress(o,16,function(o){return r(o)})},_compress:function(r,o,n){if(null==r)return"";var e,t,i,s={},u={},a="",p="",c="",l=2,f=3,h=2,d=[],m=0,v=0;for(i=0;i<r.length;i+=1)if(a=r.charAt(i),Object.prototype.hasOwnProperty.call(s,a)||(s[a]=f++,u[a]=!0),p=c+a,Object.prototype.hasOwnProperty.call(s,p))c=p;else{if(Object.prototype.hasOwnProperty.call(u,c)){if(c.charCodeAt(0)<256){for(e=0;e<h;e++)m<<=1,v==o-1?(v=0,d.push(n(m)),m=0):v++;for(t=c.charCodeAt(0),e=0;e<8;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1}else{for(t=1,e=0;e<h;e++)m=m<<1|t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t=0;for(t=c.charCodeAt(0),e=0;e<16;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1}0==--l&&(l=Math.pow(2,h),h++),delete u[c]}else for(t=s[c],e=0;e<h;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1;0==--l&&(l=Math.pow(2,h),h++),s[p]=f++,c=String(a)}if(""!==c){if(Object.prototype.hasOwnProperty.call(u,c)){if(c.charCodeAt(0)<256){for(e=0;e<h;e++)m<<=1,v==o-1?(v=0,d.push(n(m)),m=0):v++;for(t=c.charCodeAt(0),e=0;e<8;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1}else{for(t=1,e=0;e<h;e++)m=m<<1|t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t=0;for(t=c.charCodeAt(0),e=0;e<16;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1}0==--l&&(l=Math.pow(2,h),h++),delete u[c]}else for(t=s[c],e=0;e<h;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1;0==--l&&(l=Math.pow(2,h),h++)}for(t=2,e=0;e<h;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1;for(;;){if(m<<=1,v==o-1){d.push(n(m));break}v++}return d.join("")},decompress:function(r){return null==r?"":""==r?null:i._decompress(r.length,32768,function(o){return r.charCodeAt(o)})},_decompress:function(o,n,e){var t,i,s,u,a,p,c,l=[],f=4,h=4,d=3,m="",v=[],g={val:e(0),position:n,index:1};for(t=0;t<3;t+=1)l[t]=t;for(s=0,a=Math.pow(2,2),p=1;p!=a;)u=g.val&g.position,g.position>>=1,0==g.position&&(g.position=n,g.val=e(g.index++)),s|=(u>0?1:0)*p,p<<=1;switch(s){case 0:for(s=0,a=Math.pow(2,8),p=1;p!=a;)u=g.val&g.position,g.position>>=1,0==g.position&&(g.position=n,g.val=e(g.index++)),s|=(u>0?1:0)*p,p<<=1;c=r(s);break;case 1:for(s=0,a=Math.pow(2,16),p=1;p!=a;)u=g.val&g.position,g.position>>=1,0==g.position&&(g.position=n,g.val=e(g.index++)),s|=(u>0?1:0)*p,p<<=1;c=r(s);break;case 2:return""}for(l[3]=c,i=c,v.push(c);;){if(g.index>o)return"";for(s=0,a=Math.pow(2,d),p=1;p!=a;)u=g.val&g.position,g.position>>=1,0==g.position&&(g.position=n,g.val=e(g.index++)),s|=(u>0?1:0)*p,p<<=1;switch(c=s){case 0:for(s=0,a=Math.pow(2,8),p=1;p!=a;)u=g.val&g.position,g.position>>=1,0==g.position&&(g.position=n,g.val=e(g.index++)),s|=(u>0?1:0)*p,p<<=1;l[h++]=r(s),c=h-1,f--;break;case 1:for(s=0,a=Math.pow(2,16),p=1;p!=a;)u=g.val&g.position,g.position>>=1,0==g.position&&(g.position=n,g.val=e(g.index++)),s|=(u>0?1:0)*p,p<<=1;l[h++]=r(s),c=h-1,f--;break;case 2:return v.join("")}if(0==f&&(f=Math.pow(2,d),d++),l[c])m=l[c];else{if(c!==h)return null;m=i+i.charAt(0)}v.push(m),l[h++]=i+m.charAt(0),i=m,0==--f&&(f=Math.pow(2,d),d++)}}};return i}();"function"==typeof define&&define.amd?define(function(){return LZString}):"undefined"!=typeof module&&null!=module?module.exports=LZString:"undefined"!=typeof angular&&null!=angular&&angular.module("LZString",[]).factory("LZString",function(){return LZString});</script>
 <!--
 CHANGELOG
+v0.33 [2026-05-28] Fix MP del mes (carta gantt + eventos), navegación de meses/año, grabador.
+  - BUG: la MP del mes se consideraba "pendiente" mirando SOLO eventos, ignorando la
+    matriz registro[mes].R (carta gantt). Un equipo con la MP marcada en la gantt pero
+    sin evento aparecía como pendiente. Ahora resultadoMPMes() / mpEstadoMes() consideran
+    AMBAS fuentes (evento del mes y matriz del año vigente). Estados: ejecutada (Si) /
+    reprogramada (C1-C8) / otro (FS,NU,Baja,No) / pendiente (nada). Aplicado en el Resumen
+    (por mes y por ejecutor), la ficha del equipo y la vista MP del mes (filtro +
+    etiqueta). mpDelMesEjecutada ahora deriva de mpEstadoMes.
+  - El filtro "Reprogramadas" mira el resultado (C1-C8), no la programación.
+  - MP del mes: navegación con flechas y selector de año (antes el año quedaba fijo).
+  - Grabador: captura todos los avisos (resultado de acciones), el cambio de filtros con
+    la opción elegida, y más contexto de estado (conflictos, borradores, por resolver).
 v0.32 [2026-05-28] Excel autónomo: hoja oculta para lo automático + guía + "Por resolver".
   - exportExcel() reestructurado para que el archivo sirva como respaldo de trabajo
     sin el programa:
@@ -71,7 +83,7 @@ v0.28 [2026-05-28] El folio del ciclo se preselecciona; aviso si no hay ciclo ab
     (antes era la misma expresión repetida 5 veces).
 v0.27 [2026-05-28] El número de versión del encabezado se sincroniza solo.
   - El encabezado mostraba "v0.23" fijo (escrito a mano), sin actualizarse al subir
-    APP_VERSION en versiones siguientes. Ahora usa el placeholder 0.32
+    APP_VERSION en versiones siguientes. Ahora usa el placeholder 0.33
     que build_app.py reemplaza con el valor real de APP_VERSION al generar: una
     sola fuente de verdad, no vuelve a quedar desfasado.
 v0.26 [2026-05-28] Cierre de ciclo por Recepción + Reparación "en servicio técnico".
@@ -885,7 +897,7 @@ header.top nav .nav-more-menu button.active{background:var(--accent-soft);color:
 <body>
 <div class="app">
   <header class="top">
-    <h1>HHHA <small>Equipos Críticos · v0.32</small></h1>
+    <h1>HHHA <small>Equipos Críticos · v0.33</small></h1>
     <nav id="nav"></nav>
     <div class="tools">
       <span id="state-indicator" class="state-indicator" title="">—</span>
@@ -930,7 +942,7 @@ const SEED = {"equipos":[{"id":1,"carpeta":1,"inv":"2-115361","fam":"Incubadoras
 //==============================================================
 // CONSTANTES & CATÁLOGOS
 //==============================================================
-const APP_VERSION = '0.32';
+const APP_VERSION = '0.33';
 const STORAGE_KEY = 'hhha_v1_data';
 const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 const MES_NUM = {Ene:0,Feb:1,Mar:2,Abr:3,May:4,Jun:5,Jul:6,Ago:7,Sep:8,Oct:9,Nov:10,Dic:11};
@@ -1279,10 +1291,30 @@ function diasEnEstado(equipo){
   return Math.max(0, diasEntreFechas(equipo.estadoDesde, hoyLocal()));
 }
 
-function mpDelMesEjecutada(equipo, year, month){
-  // ¿existe evento MP en ese mes y año?
-  return state.eventos.some(e => e.inv === equipo.inv && e.tipo === 'Mantención preventiva' && !e.anulado &&
+// Resultado de la MP del mes considerando AMBAS fuentes: el evento MP del mes (su
+// resultado) y la matriz registro[mes].R de la carta gantt (para el año vigente).
+// Devuelve el código ('Si','C1'..'C8','FS','NU','Baja','No') o null si no hay nada.
+function resultadoMPMes(equipo, year, month){
+  const ev = state.eventos.find(e => e.inv === equipo.inv && e.tipo === 'Mantención preventiva' && !e.anulado &&
     e.fecha && new Date(e.fecha + 'T00:00:00').getFullYear() === year && new Date(e.fecha + 'T00:00:00').getMonth() === month);
+  if(ev) return ev.resultado || 'Si';
+  if(year === new Date().getFullYear()){
+    const r = ((equipo.registro||{})[NUM_MES[month]]||{}).R;
+    if(r) return r;
+  }
+  return null;
+}
+// Estado de la MP del mes: ejecutada (Si) / reprogramada (C1-C8) / otro (FS,NU,Baja,No) / pendiente (nada).
+function mpEstadoMes(equipo, year, month){
+  const r = resultadoMPMes(equipo, year, month);
+  if(r === 'Si') return 'ejecutada';
+  if(/^C[1-8]$/.test(r||'')) return 'reprogramada';
+  if(r) return 'otro';
+  return 'pendiente';
+}
+function mpDelMesEjecutada(equipo, year, month){
+  // "Ejecutada" = MP realizada (resultado Si), ya sea por evento o por la carta gantt.
+  return mpEstadoMes(equipo, year, month) === 'ejecutada';
 }
 
 function mpProgramadaEnMes(equipo, mes){
@@ -1475,9 +1507,9 @@ function toast(msg, type='', action){
   }
   $('#toast-root').appendChild(t);
   setTimeout(()=>t.remove(), 4000);
-  // Captura para análisis: errores y warnings son señales útiles
-  if(type === 'error' && typeof recorder !== 'undefined' && recorder.status === 'recording'){
-    recorder.event('form_error', {mensaje: String(msg).slice(0,180)});
+  // Captura para análisis: todo aviso es señal del RESULTADO de una acción.
+  if(typeof recorder !== 'undefined' && recorder.status === 'recording'){
+    recorder.event(type === 'error' ? 'form_error' : 'toast', {mensaje: String(msg).slice(0,180), kind: type||'info'});
   }
 }
 function badgeEstado(estado){
@@ -1897,7 +1929,7 @@ function renderSumMesesMP(year, returnParts){
     const ejecutadas = mpProgEquipos.filter(eq => mpDelMesEjecutada(eq, year, monthIdx)).length;
     const asignadas = conAsig.length;
     const sinAsignar = mpProgEquipos.length - asignadas;
-    const pendientes = mpProgEquipos.length - ejecutadas;
+    const pendientes = mpProgEquipos.filter(eq => mpEstadoMes(eq, year, monthIdx) === 'pendiente').length;
     const pct = mpProgEquipos.length === 0 ? null : Math.round(ejecutadas / mpProgEquipos.length * 100);
     return {mes, monthIdx, programadas: mpProgEquipos.length, asignadas, sinAsignar, ejecutadas, pendientes, pct};
   });
@@ -1962,7 +1994,7 @@ function renderSumEjecutoresMP(year, monthIdx, returnParts){
   const rows = EJECUTORES.map(ej => {
     const asignados = mpProgEquipos.filter(eq => state.asignacionesMP[keyMes][eq.inv] === ej);
     const ejecutadas = asignados.filter(eq => mpDelMesEjecutada(eq, year, monthIdx)).length;
-    const pendientes = asignados.length - ejecutadas;
+    const pendientes = asignados.filter(eq => mpEstadoMes(eq, year, monthIdx) === 'pendiente').length;
     const pct = asignados.length === 0 ? null : Math.round(ejecutadas / asignados.length * 100);
     return {ejecutor:ej, asignadas:asignados.length, ejecutadas, pendientes, pct};
   });
@@ -2640,11 +2672,23 @@ VIEWS.mp = function(root, params){
   const keyMes = ()=> `${year}-${String(monthIdx+1).padStart(2,'0')}`;
   state.asignacionesMP[keyMes()] = state.asignacionesMP[keyMes()] || {};
 
-  const selMes = el('select',{},
-    ...NUM_MES.map((m,i)=>el('option',{value:i,selected:i===monthIdx?'':false}, `${m} ${year}`))
-  );
+  const ANIOS = [year-1, year, year+1];
+  const selMes = el('select',{}, ...NUM_MES.map((m,i)=>el('option',{value:i}, m)));
   selMes.value = monthIdx;
+  const selAnio = el('select',{}, ...ANIOS.map(a=>el('option',{value:a}, String(a))));
+  selAnio.value = year;
+  function irAMes(d){
+    monthIdx += d;
+    if(monthIdx > 11){ monthIdx = 0; year++; }
+    if(monthIdx < 0){ monthIdx = 11; year--; }
+    if(year < ANIOS[0]) year = ANIOS[0];
+    if(year > ANIOS[ANIOS.length-1]) year = ANIOS[ANIOS.length-1];
+    selMes.value = monthIdx; selAnio.value = year; render();
+  }
   selMes.onchange = ()=>{ monthIdx = +selMes.value; render(); };
+  selAnio.onchange = ()=>{ year = +selAnio.value; render(); };
+  const btnPrevMes = el('button',{class:'small',title:'Mes anterior',onclick:()=>irAMes(-1)},'‹');
+  const btnNextMes = el('button',{class:'small',title:'Mes siguiente',onclick:()=>irAMes(1)},'›');
 
   const selExec = el('select',{},
     el('option',{value:''},'Todos los ejecutores'),
@@ -2655,7 +2699,7 @@ VIEWS.mp = function(root, params){
     el('option',{value:''},'Todos'),
     el('option',{value:'ejec',selected:params.estadoMP==='ejec'?'selected':false},'Ejecutadas'),
     el('option',{value:'pend',selected:params.estadoMP==='pend'?'selected':false},'Pendientes'),
-    el('option',{value:'reprog'},'Reprogramadas (R en P)'),
+    el('option',{value:'reprog'},'Reprogramadas (C1–C8)'),
     el('option',{value:'sinAsignar',selected:params.sinAsignar?'selected':false},'Sin asignar')
   );
   if(params.estadoMP) selEst.value = params.estadoMP;
@@ -2710,17 +2754,17 @@ VIEWS.mp = function(root, params){
     lista = lista.filter(eq => {
       const ej = ((state.asignacionesMP[keyMes()]||{})[eq.inv])||null;
       if(fExec && ej !== fExec) return false;
-      const ejec = mpDelMesEjecutada(eq, year, monthIdx);
-      if(fEst === 'ejec' && !ejec) return false;
-      if(fEst === 'pend' && ejec) return false;
-      if(fEst === 'reprog' && (eq.prog||{})[m] !== 'R') return false;
+      const est = mpEstadoMes(eq, year, monthIdx);
+      if(fEst === 'ejec' && est !== 'ejecutada') return false;
+      if(fEst === 'pend' && est !== 'pendiente') return false;
+      if(fEst === 'reprog' && est !== 'reprogramada') return false;
       if(fEst === 'sinAsignar' && ej) return false;
       return true;
     });
 
     tbody.innerHTML = '';
     lista.forEach(eq => {
-      const ejecutada = mpDelMesEjecutada(eq, year, monthIdx);
+      const est = mpEstadoMes(eq, year, monthIdx);
       state.asignacionesMP[keyMes()] = state.asignacionesMP[keyMes()] || {};
       const asign = state.asignacionesMP[keyMes()][eq.inv] || '';
       const selA = el('select',{onchange:e=>asignar(eq.inv,e.target.value)},
@@ -2739,9 +2783,12 @@ VIEWS.mp = function(root, params){
         el('td',{}, el('span',{class:'badge mp-cause'}, (eq.prog||{})[m])),
         el('td',{}, eq.freq||'—'),
         el('td',{}, selA),
-        el('td',{}, ejecutada ? el('span',{class:'badge mp-si'},'Ejecutada') : el('span',{class:'badge mp-no'},'Pendiente')),
+        el('td',{}, est==='ejecutada' ? el('span',{class:'badge mp-si'},'Ejecutada')
+                  : est==='reprogramada' ? el('span',{class:'badge st'},'Reprogramada')
+                  : est==='otro' ? el('span',{class:'badge'}, resultadoMPMes(eq, year, monthIdx)||'—')
+                  : el('span',{class:'badge mp-no'},'Pendiente')),
         el('td',{class:'actions'},
-          el('button',{class:'small primary',onclick:()=>mpRapida({invDefault:eq.inv, fechaDefault:fechaSugeridaMP(year, monthIdx)})}, ejecutada?'➕ MP':'➕ Registrar MP'),
+          el('button',{class:'small primary',onclick:()=>mpRapida({invDefault:eq.inv, fechaDefault:fechaSugeridaMP(year, monthIdx)})}, est==='ejecutada'?'➕ MP':'➕ Registrar MP'),
           el('button',{class:'small ghost',onclick:()=>navigate('equipo',{inv:eq.inv})},'Ficha')
         )
       ));
@@ -2776,7 +2823,7 @@ VIEWS.mp = function(root, params){
       )
     ),
     el('div',{class:'subtitle'},'Selecciona mes, asigna ejecutor y registra el evento al recibir la documentación. Marca varios y usa "Registrar MP a todos" para batch. Se excluyen equipos con FS/Baja/NU en meses previos.'),
-    el('div',{class:'toolbar'}, selMes, selExec, selEst, btnSelTodos, counter),
+    el('div',{class:'toolbar'}, btnPrevMes, selMes, selAnio, btnNextMes, selExec, selEst, btnSelTodos, counter),
     bulkBar,
     el('div',{style:{maxHeight:'calc(100vh - 280px)',overflow:'auto',border:'1px solid var(--border)',borderRadius:'6px'}},
       el('table',{class:'data',style:{border:'none'}},
@@ -5208,6 +5255,12 @@ const recorder = {
       if(e.target.type === 'password') return;
       this.event('input', this.descTarget(e.target), e);
     }, true);
+    // 'change' captura el cambio de filtros/selects con la opción elegida.
+    document.addEventListener('change', e=>{
+      if(this.status !== 'recording') return;
+      if(e.target.closest('#rec-widget')) return;
+      if(e.target.tagName === 'SELECT') this.event('change', this.descTarget(e.target));
+    }, true);
     document.addEventListener('focusin', e=>{
       if(this.status !== 'recording') return;
       if(e.target.closest('#rec-widget')) return;
@@ -5273,10 +5326,11 @@ const recorder = {
     const text = (t.innerText||t.textContent||'').trim().slice(0,80);
     const value = (t.type !== 'password' && t.value != null) ? String(t.value).slice(0,200) : undefined;
     const rect = t.getBoundingClientRect ? t.getBoundingClientRect() : null;
+    const opcion = (tag === 'select' && t.selectedOptions && t.selectedOptions[0]) ? t.selectedOptions[0].textContent.trim().slice(0,60) : undefined;
     return {
       selector: this.selector(t),
       tag, id, cls, textoVisible: text,
-      valor: value,
+      valor: value, opcion,
       coords: rect ? {x: Math.round(rect.x), y: Math.round(rect.y), w:Math.round(rect.width), h:Math.round(rect.height)} : null
     };
   },
@@ -5317,7 +5371,10 @@ const recorder = {
         equipos: state.equipos.length,
         eventos: state.eventos.length,
         pendientes: state.pendientes.length,
-        ciclosAbiertos: state.ciclos.filter(c=>c.estado==='abierto').length
+        ciclosAbiertos: state.ciclos.filter(c=>c.estado==='abierto').length,
+        conflictosPend: (state.conflictos||[]).filter(c=>c.estado==='pendiente'||c.estado==='pospuesto').length,
+        borradores: state.eventos.filter(e=>e.oficial!=='Sí' && !e.anulado).length,
+        pendPorResolver: state.pendientes.filter(p=>!p.anulado && p.estado!=='cerrado').length
       }
     };
     if(raw && raw.clientX != null) ev.click = {x:raw.clientX, y:raw.clientY};
