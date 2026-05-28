@@ -17,6 +17,16 @@ HTML = r"""<!DOCTYPE html>
 <script>__LZSTRING_PLACEHOLDER__</script>
 <!--
 CHANGELOG
+v0.30 [2026-05-28] Look más moderno (aprobado en muestra) + "Por resolver" en tarjetas.
+  - Capa de estilo moderno añadida al final del <style> (sin alterar la estructura
+    ni los selectores existentes, para no romper): bordes redondeados mayores y
+    sombras suaves en botones/campos/KPIs/tablas/tarjetas; navegación tipo "pastilla"
+    (activo con fondo de acento); ventanas flotantes (modales) con esquinas más
+    redondeadas, sombra profunda y fondo desenfocado (backdrop blur).
+  - VIEWS.porResolver reescrita con tarjetas accionables: banda de color por urgencia
+    (rojo vencido / gris no iniciado / ámbar en proceso / teal ciclo), título, detalle
+    y botones Empezar/Resolver. Mantiene la misma lógica de datos de v0.29.
+  - Tema claro/oscuro se conserva (preferencia recordada por el usuario).
 v0.29 [2026-05-28] Pendientes orientados a la acción + pantalla "Por resolver".
   - Pendientes con estados No iniciado -> En proceso -> Resuelto (internos
     'no_iniciado'/'en_proceso'/'cerrado'; 'cerrado' se conserva para no romper los
@@ -800,6 +810,48 @@ header.top nav button .nav-badge{display:inline-block;margin-left:6px;padding:0 
   .kpi:nth-child(2n){border-right:none}
   .view h2{font-size:18px}
 }
+/* ===== Capa de estilo moderno (v0.30) — sobre la base, sin alterar la estructura ===== */
+:root{ --r:12px; --r-sm:9px; --r-lg:18px;
+  --shadow-sm:0 1px 2px rgba(18,22,31,.05);
+  --shadow:0 4px 16px rgba(18,22,31,.07);
+  --shadow-lg:0 18px 48px rgba(18,22,31,.16); }
+[data-theme="dark"]{
+  --shadow-sm:0 1px 2px rgba(0,0,0,.4);
+  --shadow:0 4px 16px rgba(0,0,0,.45);
+  --shadow-lg:0 18px 48px rgba(0,0,0,.6); }
+button{border-radius:var(--r-sm);padding:8px 14px;font-weight:600}
+button.primary{box-shadow:0 2px 8px rgba(13,122,107,.26)}
+button.primary:hover{filter:brightness(1.06)}
+button.small{border-radius:8px;padding:6px 11px;font-weight:600}
+button.ghost{box-shadow:none}
+input,select,textarea{border-radius:var(--r-sm)}
+header.top nav button{border-bottom:none;border-radius:9px;height:36px;padding:0 14px;font-weight:600}
+header.top nav button:hover{background:var(--surface-2)}
+header.top nav button.active{background:var(--accent-soft);color:var(--accent);border-bottom:none}
+header.top .tools button{border-radius:9px}
+.kpis{border-radius:var(--r);box-shadow:var(--shadow-sm)}
+table.data{border-radius:var(--r);box-shadow:var(--shadow-sm)}
+.badge{padding:2px 10px;font-weight:600}
+.empty,.eq-info-card,.ciclo-card,.imp-card,.imp-progress,.notice,.drop-zone{border-radius:var(--r)}
+.notice{padding:12px 15px}
+.modal{border-radius:var(--r-lg);box-shadow:var(--shadow-lg)}
+.modal-backdrop{background:rgba(15,18,22,.5);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+/* Pantalla "Por resolver" */
+.pr-hero{margin-bottom:24px}
+.pr-hero h2{font-size:28px;font-weight:750;letter-spacing:-.03em;margin:0 0 4px}
+.pr-section{margin-bottom:24px}
+.pr-section-hd{display:flex;align-items:center;gap:10px;margin:0 2px 12px}
+.pr-section-hd h3{margin:0;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.pr-section-hd .count{font-size:12px;font-weight:700;color:var(--muted);background:var(--surface-2);border:1px solid var(--border);border-radius:99px;padding:2px 9px}
+.pr-card{display:flex;align-items:center;gap:15px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:15px 18px;margin-bottom:10px;box-shadow:var(--shadow-sm);position:relative;overflow:hidden;transition:box-shadow .15s,transform .15s,border-color .15s}
+.pr-card:hover{box-shadow:var(--shadow);transform:translateY(-1px);border-color:var(--border-strong)}
+.pr-card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--border-strong)}
+.pr-card.red::before{background:var(--noop)} .pr-card.amber::before{background:var(--st)} .pr-card.teal::before{background:var(--accent)} .pr-card.gray::before{background:var(--muted-2)}
+.pr-card .pr-body{flex:1;min-width:0}
+.pr-card .pr-title{font-weight:650;font-size:14.5px;letter-spacing:-.01em}
+.pr-card .pr-sub{font-size:12.5px;color:var(--muted);margin-top:3px;overflow:hidden;text-overflow:ellipsis}
+.pr-card .pr-acts{display:flex;gap:8px;flex:none}
+.pr-allclear{text-align:center;padding:54px 20px;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:var(--r)}
 </style>
 </head>
 <body>
@@ -850,7 +902,7 @@ const SEED = __SEED_PLACEHOLDER__;
 //==============================================================
 // CONSTANTES & CATÁLOGOS
 //==============================================================
-const APP_VERSION = '0.29';
+const APP_VERSION = '0.30';
 const STORAGE_KEY = 'hhha_v1_data';
 const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 const MES_NUM = {Ene:0,Feb:1,Mar:2,Abr:3,May:4,Jun:5,Jul:6,Ago:7,Sep:8,Oct:9,Nov:10,Dic:11};
@@ -1542,41 +1594,54 @@ VIEWS.porResolver = function(root){
   const confl = (state.conflictos||[]).filter(c=>c.estado==='pendiente'||c.estado==='pospuesto');
   const total = activos.length + ciclos.length + borr.length + confl.length;
 
-  const sec = (titulo, hint, contenido) => el('div',{class:'sum-section'},
-    el('div',{class:'sum-section-hd'}, el('h3',{}, titulo), el('span',{class:'hint'}, hint)),
-    contenido
-  );
-  const fila = (titulo, sub, btnLabel, onclick) => el('div',
-    {style:{display:'flex',justifyContent:'space-between',alignItems:'center',gap:'10px',padding:'8px 0',borderBottom:'1px solid var(--border)'}},
-    el('div',{}, el('strong',{}, titulo), el('br'), el('small',{class:'muted'}, sub)),
-    el('button',{class:'small',onclick}, btnLabel)
-  );
-
   const v = el('div',{class:'view'},
-    el('h2',{}, 'Por resolver'),
-    el('div',{class:'subtitle'},
-      new Date().toLocaleDateString('es-CL',{weekday:'long',day:'2-digit',month:'long',year:'numeric'}) +
-      ' · ' + (total>0 ? `${total} cosa${total!==1?'s':''} por resolver` : 'todo al día'))
+    el('div',{class:'pr-hero'},
+      el('h2',{}, 'Por resolver'),
+      el('div',{class:'subtitle'},
+        new Date().toLocaleDateString('es-CL',{weekday:'long',day:'2-digit',month:'long',year:'numeric'}) +
+        (total>0 ? ` · te quedan ${total} cosa${total!==1?'s':''} por resolver` : ' · todo al día'))
+    )
   );
 
   if(total === 0){
-    v.appendChild(el('div',{class:'notice info'}, '¡Todo al día! No tienes pendientes, ciclos abiertos, borradores ni conflictos por resolver.'));
+    v.appendChild(el('div',{class:'pr-allclear'},
+      el('div',{style:{fontSize:'15px',fontWeight:'700',color:'var(--op)',marginBottom:'4px'}},'¡Todo al día!'),
+      el('div',{},'No tienes pendientes, ciclos abiertos, borradores ni conflictos por resolver.')));
     root.appendChild(v); return;
   }
-  if(venc.length) v.appendChild(sec('Pendientes vencidos', `${venc.length} atrasado(s) — urgen`, renderPendientesTabla(venc)));
-  if(noInic.length) v.appendChild(sec('Pendientes no iniciados', `${noInic.length} por empezar`, renderPendientesTabla(noInic)));
-  if(enProc.length) v.appendChild(sec('En proceso', `${enProc.length} en curso`, renderPendientesTabla(enProc)));
-  if(ciclos.length) v.appendChild(sec('Ciclos correctivos abiertos', `${ciclos.length}`,
-    el('div',{},
-      ...ciclos.slice(0,12).map(c=>{ const eq=findEquipo(c.inv);
-        return fila(c.folio||'(sin folio)', (c.inv||'')+' · '+(eq?eq.equipo:'')+' · abierto '+fmtFecha(c.fechaApertura), 'Ver equipo', ()=>navigate('equipo',{inv:c.inv})); }),
-      ciclos.length>12 ? el('button',{class:'small ghost',onclick:()=>navigate('ciclos',{estado:'abierto'})}, 'Ver todos los ciclos') : null)));
-  if(borr.length) v.appendChild(sec('Borradores por oficializar', `${borr.length} · documentos por archivar`,
-    el('div',{},
-      ...borr.slice(0,12).map(e=> fila(e.tipo, (e.inv||'')+' · '+(e.equipo||'')+' · '+fmtFecha(e.fecha), 'Ver ficha', ()=>navigate('equipo',{inv:e.inv}))),
-      borr.length>12 ? el('button',{class:'small ghost',onclick:()=>navigate('eventos',{oficial:'No'})}, 'Ver todos los borradores') : null)));
-  if(confl.length) v.appendChild(sec('Conflictos con el maestro', `${confl.length} por revisar`,
-    el('div',{}, el('button',{class:'primary',onclick:()=>navigate('conciliacion')}, 'Revisar en Conciliación'))));
+
+  const seccion = (titulo, count, urge) => el('div',{class:'pr-section'},
+    el('div',{class:'pr-section-hd'}, el('h3',{style:urge?{color:'var(--noop)'}:null}, titulo), el('span',{class:'count'}, count)));
+  const tarjetaPend = (p, color) => {
+    const acts = el('div',{class:'pr-acts'});
+    if(p.estado==='no_iniciado') acts.appendChild(el('button',{class:'small',onclick:()=>cambiarEstadoPend(p,'en_proceso')},'Empezar'));
+    acts.appendChild(el('button',{class:'small primary',onclick:()=>cerrarPendiente(p)},'Resolver'));
+    return el('div',{class:'pr-card '+color},
+      el('div',{class:'pr-body'},
+        el('div',{class:'pr-title'}, (p.inv||'')+' · '+(p.equipo||'')),
+        el('div',{class:'pr-sub'}, (TIPO_PENDIENTE[p.tipo]||p.tipo) + (p.desc? ' — '+p.desc : '')),
+        el('div',{style:{marginTop:'7px'}}, badgePend(p.estado),
+          p.fechaComp ? el('span',{class:'badge',style:{marginLeft:'6px'}}, 'Compromiso '+fmtFecha(p.fechaComp)) : null)
+      ), acts);
+  };
+  const tarjeta = (color, titulo, sub, btnLabel, onclick, btnPrimary) => el('div',{class:'pr-card '+color},
+    el('div',{class:'pr-body'}, el('div',{class:'pr-title'}, titulo), el('div',{class:'pr-sub'}, sub)),
+    el('div',{class:'pr-acts'}, el('button',{class:'small'+(btnPrimary?' primary':''),onclick}, btnLabel)));
+
+  if(venc.length){ const s=seccion('Vencidos', venc.length+' atrasado(s)', true); venc.forEach(p=>s.appendChild(tarjetaPend(p,'red'))); v.appendChild(s); }
+  if(noInic.length){ const s=seccion('No iniciados', noInic.length+' por empezar'); noInic.forEach(p=>s.appendChild(tarjetaPend(p,'gray'))); v.appendChild(s); }
+  if(enProc.length){ const s=seccion('En proceso', enProc.length+' en curso'); enProc.forEach(p=>s.appendChild(tarjetaPend(p,'amber'))); v.appendChild(s); }
+  if(ciclos.length){ const s=seccion('Ciclos correctivos abiertos', String(ciclos.length));
+    ciclos.slice(0,15).forEach(c=>{ const eq=findEquipo(c.inv);
+      s.appendChild(tarjeta('teal', c.folio||'(sin folio)', (c.inv||'')+' · '+(eq?eq.equipo:'')+' · abierto '+fmtFecha(c.fechaApertura), 'Ver equipo', ()=>navigate('equipo',{inv:c.inv}))); });
+    v.appendChild(s); }
+  if(borr.length){ const s=seccion('Borradores por archivar', borr.length+' documento(s)');
+    borr.slice(0,15).forEach(e=>
+      s.appendChild(tarjeta('gray', e.tipo+' · '+(e.equipo||''), (e.inv||'')+' · '+fmtFecha(e.fecha)+' · confirma el documento y oficialízalo', 'Ver ficha', ()=>navigate('equipo',{inv:e.inv}))));
+    v.appendChild(s); }
+  if(confl.length){ const s=seccion('Conflictos con el maestro', confl.length+' por revisar');
+    s.appendChild(tarjeta('teal','Diferencias con la carta gantt', confl.length+' celda(s) por confirmar', 'Revisar', ()=>navigate('conciliacion'), true));
+    v.appendChild(s); }
   root.appendChild(v);
 };
 

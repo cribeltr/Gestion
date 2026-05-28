@@ -268,4 +268,24 @@
   selector de edición, renderPendientesTabla, exportExcel, buildNav, VIEWS.porResolver,
   bootstrap/resetState); CHANGELOG v0.29.
 
+## [2026-05-28] Look moderno aplicado vía capa de override (v0.30)
+
+- **Disparador:** el usuario aprobó la muestra de diseño (docs/muestra_diseno.html)
+  y pidió aplicarla a todo el programa, manteniendo claro/oscuro.
+- **Hecho:** en vez de reescribir ~400 líneas de CSS (riesgoso), se añadió una **capa
+  de estilo moderno al final del `<style>`** que sobre-escribe por cascada las
+  propiedades clave de los selectores existentes (radios mayores, sombras suaves, nav
+  tipo "pastilla", modal con `backdrop-filter: blur` y esquinas redondeadas). No se
+  tocó ningún selector ni la estructura → no rompe funcionalidad. `VIEWS.porResolver`
+  reescrita con tarjetas `.pr-card` (banda de color por urgencia: rojo/gris/ámbar/teal).
+- **Validado:** `node --check` OK; clases nuevas presentes; conteos de Por resolver
+  intactos (2 vencidos / 32 no iniciados / 3 ciclos / 31 borradores); tema conservado.
+- **Heurística:** para un restyle amplio de bajo riesgo en un CSS grande, una **capa de
+  override al final** (misma especificidad, gana por orden de aparición) moderniza todo
+  sin editar cada regla ni arriesgar romper. Deuda asumida: el CSS base y el override
+  coexisten; conviene consolidar si el diseño se estabiliza.
+- **Dónde aplica:** build_app.py (`<style>` capa final + `VIEWS.porResolver`);
+  CHANGELOG v0.30. Falta (fases siguientes): Excel autónomo, simplificar el menú,
+  y pulir vista por vista (ficha de equipo, conciliación) con el mismo lenguaje.
+
 <!-- Próximas entradas debajo de esta línea -->
