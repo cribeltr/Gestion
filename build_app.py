@@ -17,6 +17,17 @@ HTML = r"""<!DOCTYPE html>
 <script>__LZSTRING_PLACEHOLDER__</script>
 <!--
 CHANGELOG
+v0.29 [2026-05-28] Pendientes orientados a la acción + pantalla "Por resolver".
+  - Pendientes con estados No iniciado -> En proceso -> Resuelto (internos
+    'no_iniciado'/'en_proceso'/'cerrado'; 'cerrado' se conserva para no romper los
+    conteos !== 'cerrado'). Nacen "No iniciado". Migración: 'creado'/'abierto' de
+    datos previos -> 'no_iniciado' (en init() y en migrate()).
+  - Tabla de pendientes: estado con color (badgePend) y botones rápidos "Empezar"
+    y "Resolver". Filtro de la vista y selector de edición con los nuevos nombres.
+  - Nueva vista "Por resolver" como pantalla de inicio: bandeja accionable con
+    pendientes vencidos / no iniciados / en proceso, ciclos abiertos, borradores por
+    oficializar y conflictos con el maestro. Contador en el menú.
+  - El "Dashboard" de números pasa a llamarse "Resumen" (sigue accesible).
 v0.28 [2026-05-28] El folio del ciclo se preselecciona; aviso si no hay ciclo abierto.
   - En los eventos que se vinculan a un ciclo (Visita, Orden de Compra, Envío,
     Recepción, Reparación), el campo "Folio SIGEM" ahora PRESELECCIONA el ciclo
@@ -839,7 +850,7 @@ const SEED = __SEED_PLACEHOLDER__;
 //==============================================================
 // CONSTANTES & CATÁLOGOS
 //==============================================================
-const APP_VERSION = '0.28';
+const APP_VERSION = '0.29';
 const STORAGE_KEY = 'hhha_v1_data';
 const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 const MES_NUM = {Ene:0,Feb:1,Mar:2,Abr:3,May:4,Jun:5,Jul:6,Ago:7,Sep:8,Oct:9,Nov:10,Dic:11};
@@ -882,6 +893,26 @@ const DOCS_CORRECTIVO = ['Solicitud SIGEM con tarea cerrada','Cotización','Info
 const DOCS_PREVENTIVO = ['Protocolo / hoja de MP','Pauta de monitoreo diario (DEA)','Firma jefe equipo médico','Informe técnico de empresa externa'];
 
 const TIPO_PENDIENTE = {documento_faltante:'Documento faltante',reprogramacion:'Reprogramación MP',recomendacion_tecnica:'Recomendación técnica',gestion_general:'Gestión general'};
+// Estados de pendiente orientados a la acción: No iniciado -> En proceso -> Resuelto.
+// 'cerrado' se conserva como estado final (= Resuelto) para no romper los conteos existentes (!== 'cerrado').
+const ESTADO_PEND_LABEL = {no_iniciado:'No iniciado', en_proceso:'En proceso', cerrado:'Resuelto'};
+function normalizarEstadoPend(e){
+  if(e==='cerrado'||e==='resuelto') return 'cerrado';
+  if(e==='en_proceso'||e==='en proceso') return 'en_proceso';
+  return 'no_iniciado'; // 'creado', 'abierto', vacío -> no iniciado
+}
+function badgePend(estado){
+  const cls = estado==='cerrado' ? 'op' : (estado==='en_proceso' ? 'st' : 'noop');
+  return el('span',{class:'badge '+cls}, ESTADO_PEND_LABEL[estado]||estado);
+}
+function cambiarEstadoPend(p, nuevo){
+  const antes = p.estado;
+  p.estado = nuevo;
+  if(nuevo==='cerrado' && !p.fechaCierre) p.fechaCierre = hoyLocal();
+  audit('pendiente', p.id, 'estado', antes, nuevo);
+  save();
+  navigate(currentView, viewParams);
+}
 
 //==============================================================
 // STATE & PERSISTENCIA
@@ -912,6 +943,8 @@ function migrate(d){
   d.counters = d.counters || {};
   if(d.counters.conflicto == null) d.counters.conflicto = (d.conflictos.length||0) + 1;
   if(d.counters.importacion == null) d.counters.importacion = (d.importaciones.length||0) + 1;
+  // Normalizar estados de pendientes de versiones previas (creado/abierto -> no_iniciado).
+  (d.pendientes||[]).forEach(p => { p.estado = normalizarEstadoPend(p.estado); });
   d.__v = APP_VERSION;
   return d;
 }
@@ -1070,7 +1103,7 @@ function init(){
       if((p.desc||'').toLowerCase().includes('pauta de monitoreo')||(p.desc||'').toLowerCase().includes('firma')) tipo='documento_faltante';
       if((p.desc||'').toLowerCase().includes('reprogram')) tipo='reprogramacion';
     }
-    return {...p, tipo, origen: p.origen || 'manual', seguimientos:[], anulado:false};
+    return {...p, tipo, estado: normalizarEstadoPend(p.estado), origen: p.origen || 'manual', seguimientos:[], anulado:false};
   });
   const tareas = SEED.tareas.slice();
   // expand inline tareas from pendientes (string "[ ] ...")
@@ -1103,7 +1136,7 @@ function resetState(){
   localStorage.removeItem(STORAGE_KEY);
   state = init();
   save();
-  navigate('dashboard');
+  navigate('porResolver');
   toast('Datos reseteados','success');
 }
 
@@ -1215,7 +1248,7 @@ function crearPendienteAuto(inv, tipo, desc, ejecutor, eventoOrigenId, fechaComp
     fechaComp: fechaCompromiso || null,
     proxRecord: fechaCompromiso || null,
     fechaCierre: null,
-    estado:'creado',
+    estado:'no_iniciado',
     origen:'auto_mp_causal',
     seguimientos:[],
     tareas:[],
@@ -1473,7 +1506,7 @@ VIEWS.dashboard = function(root){
     kpiCell('No operativos', noopCount, ()=>navigate('equipos',{estado:'no_operativo'}), noopCount>0?'alert':''),
     kpiCell('En serv. técnico', stCount, ()=>navigate('equipos',{estado:'en_servicio_tecnico'}), stCount>0?'warn':''),
     kpiCell('Alertas >30 d', alertaDias.length, ()=>navigate('equipos',{alerta30:'1'}), alertaDias.length>0?'alert':''),
-    kpiCell('Pend. abiertos', pendAbiertos.length, ()=>navigate('pendientes',{estado:'abierto'}), pendAbiertos.length>0?'warn':''),
+    kpiCell('Pend. por resolver', pendAbiertos.length, ()=>navigate('pendientes',{}), pendAbiertos.length>0?'warn':''),
     kpiCell('Ciclos abiertos', ciclosAbiertos.length, ()=>navigate('ciclos',{estado:'abierto'})),
     kpiCell('Eventos borrador', eventosBorrador.length, ()=>navigate('eventos',{oficial:'No'}))
   );
@@ -1495,6 +1528,56 @@ VIEWS.dashboard = function(root){
       renderPendientesTabla(pendAbiertos.sort((a,b)=>(a.fechaComp||'9999').localeCompare(b.fechaComp||'9999')).slice(0,10))
     ) : null
   ));
+};
+
+VIEWS.porResolver = function(root){
+  state.equipos.forEach(recalcEstadoEquipo);
+  const hoy = hoyLocal();
+  const activos = state.pendientes.filter(p=>!p.anulado && p.estado!=='cerrado');
+  const venc = activos.filter(p=>p.fechaComp && p.fechaComp < hoy);
+  const noInic = activos.filter(p=>p.estado==='no_iniciado' && !(p.fechaComp && p.fechaComp < hoy));
+  const enProc = activos.filter(p=>p.estado==='en_proceso' && !(p.fechaComp && p.fechaComp < hoy));
+  const ciclos = state.ciclos.filter(c=>c.estado==='abierto');
+  const borr = state.eventos.filter(e=>e.oficial!=='Sí' && !e.anulado);
+  const confl = (state.conflictos||[]).filter(c=>c.estado==='pendiente'||c.estado==='pospuesto');
+  const total = activos.length + ciclos.length + borr.length + confl.length;
+
+  const sec = (titulo, hint, contenido) => el('div',{class:'sum-section'},
+    el('div',{class:'sum-section-hd'}, el('h3',{}, titulo), el('span',{class:'hint'}, hint)),
+    contenido
+  );
+  const fila = (titulo, sub, btnLabel, onclick) => el('div',
+    {style:{display:'flex',justifyContent:'space-between',alignItems:'center',gap:'10px',padding:'8px 0',borderBottom:'1px solid var(--border)'}},
+    el('div',{}, el('strong',{}, titulo), el('br'), el('small',{class:'muted'}, sub)),
+    el('button',{class:'small',onclick}, btnLabel)
+  );
+
+  const v = el('div',{class:'view'},
+    el('h2',{}, 'Por resolver'),
+    el('div',{class:'subtitle'},
+      new Date().toLocaleDateString('es-CL',{weekday:'long',day:'2-digit',month:'long',year:'numeric'}) +
+      ' · ' + (total>0 ? `${total} cosa${total!==1?'s':''} por resolver` : 'todo al día'))
+  );
+
+  if(total === 0){
+    v.appendChild(el('div',{class:'notice info'}, '¡Todo al día! No tienes pendientes, ciclos abiertos, borradores ni conflictos por resolver.'));
+    root.appendChild(v); return;
+  }
+  if(venc.length) v.appendChild(sec('Pendientes vencidos', `${venc.length} atrasado(s) — urgen`, renderPendientesTabla(venc)));
+  if(noInic.length) v.appendChild(sec('Pendientes no iniciados', `${noInic.length} por empezar`, renderPendientesTabla(noInic)));
+  if(enProc.length) v.appendChild(sec('En proceso', `${enProc.length} en curso`, renderPendientesTabla(enProc)));
+  if(ciclos.length) v.appendChild(sec('Ciclos correctivos abiertos', `${ciclos.length}`,
+    el('div',{},
+      ...ciclos.slice(0,12).map(c=>{ const eq=findEquipo(c.inv);
+        return fila(c.folio||'(sin folio)', (c.inv||'')+' · '+(eq?eq.equipo:'')+' · abierto '+fmtFecha(c.fechaApertura), 'Ver equipo', ()=>navigate('equipo',{inv:c.inv})); }),
+      ciclos.length>12 ? el('button',{class:'small ghost',onclick:()=>navigate('ciclos',{estado:'abierto'})}, 'Ver todos los ciclos') : null)));
+  if(borr.length) v.appendChild(sec('Borradores por oficializar', `${borr.length} · documentos por archivar`,
+    el('div',{},
+      ...borr.slice(0,12).map(e=> fila(e.tipo, (e.inv||'')+' · '+(e.equipo||'')+' · '+fmtFecha(e.fecha), 'Ver ficha', ()=>navigate('equipo',{inv:e.inv}))),
+      borr.length>12 ? el('button',{class:'small ghost',onclick:()=>navigate('eventos',{oficial:'No'})}, 'Ver todos los borradores') : null)));
+  if(confl.length) v.appendChild(sec('Conflictos con el maestro', `${confl.length} por revisar`,
+    el('div',{}, el('button',{class:'primary',onclick:()=>navigate('conciliacion')}, 'Revisar en Conciliación'))));
+  root.appendChild(v);
 };
 
 function kpiCell(lbl, val, onclick, cls){
@@ -1666,7 +1749,7 @@ function renderSumServicios(){
             c(r.noop, r.servicio, {estado:'no_operativo'}),
             c(r.st, r.servicio, {estado:'en_servicio_tecnico'}),
             c(r.baja, r.servicio, {estado:'baja'}),
-            c(r.pend, r.servicio, {__view:'pendientes',estado:'abierto'})
+            c(r.pend, r.servicio, {__view:'pendientes'})
           )),
           el('tr',{class:'total-row'},
             el('td',{},'Total'),
@@ -2669,9 +2752,9 @@ VIEWS.pendientes = function(root, params){
   if(params.tipo) selTipo.value = params.tipo;
   const selEst = el('select',{},
     el('option',{value:''},'Todos los estados'),
-    el('option',{value:'creado'},'Creado'),
-    el('option',{value:'abierto',selected:params.estado==='abierto'?'selected':false},'Abierto'),
-    el('option',{value:'cerrado',selected:params.estado==='cerrado'?'selected':false},'Cerrado')
+    el('option',{value:'no_iniciado',selected:params.estado==='no_iniciado'?'selected':false},'No iniciado'),
+    el('option',{value:'en_proceso',selected:params.estado==='en_proceso'?'selected':false},'En proceso'),
+    el('option',{value:'cerrado',selected:params.estado==='cerrado'?'selected':false},'Resuelto')
   );
   if(params.estado) selEst.value = params.estado;
   const selExec = el('select',{},
@@ -2745,10 +2828,11 @@ function renderPendientesTabla(list){
           el('td',{style:{maxWidth:'400px'}}, p.desc),
           el('td',{}, p.ejecutor||'—'),
           el('td',{style:vencido?{color:'var(--danger)',fontWeight:'600'}:null}, fmtFecha(p.fechaComp)),
-          el('td',{}, el('span',{class:'badge '+p.estado}, p.estado)),
+          el('td',{}, badgePend(p.estado)),
           el('td',{class:'actions'},
             el('button',{class:'small',onclick:()=>abrirPendiente(p)},'Ver'),
-            p.estado !== 'cerrado' ? el('button',{class:'small primary',onclick:()=>cerrarPendiente(p)},'Cerrar') : null,
+            p.estado==='no_iniciado' ? el('button',{class:'small',onclick:()=>cambiarEstadoPend(p,'en_proceso')},'Empezar') : null,
+            p.estado !== 'cerrado' ? el('button',{class:'small primary',onclick:()=>cerrarPendiente(p)},'Resolver') : null,
             el('button',{class:'small ghost',onclick:()=>navigate('equipo',{inv:p.inv})},'Ficha')
           )
         );
@@ -4410,7 +4494,7 @@ function nuevoPendiente(opts){
         ejecutor: ejec.value||null,
         fechaCrea: hoyLocal(),
         fechaComp: fComp.value||null, proxRecord: fRec.value||null,
-        fechaCierre:null, estado:'abierto', origen:'manual',
+        fechaCierre:null, estado:'no_iniciado', origen:'manual',
         seguimientos:[], tareas:[], anulado:false
       };
       state.pendientes.push(p);
@@ -4427,7 +4511,7 @@ function abrirPendiente(p){
   const desc = el('textarea',{},p.desc||'');
   const tipo = el('select',{}, ...Object.entries(TIPO_PENDIENTE).map(([k,v])=>el('option',{value:k,selected:k===p.tipo?'selected':false},v)));
   const ejec = el('select',{}, el('option',{value:''},'—'), ...EJECUTORES.map(x=>el('option',{value:x,selected:x===p.ejecutor?'selected':false},x)));
-  const estado = el('select',{}, ...['creado','abierto','cerrado'].map(s=>el('option',{value:s,selected:s===p.estado?'selected':false},s)));
+  const estado = el('select',{}, ...['no_iniciado','en_proceso','cerrado'].map(s=>el('option',{value:s,selected:s===p.estado?'selected':false},ESTADO_PEND_LABEL[s])));
   const fComp = el('input',{type:'date',value:p.fechaComp||''});
   const fRec = el('input',{type:'date',value:p.proxRecord||''});
   tipo.value = p.tipo; ejec.value = p.ejecutor||''; estado.value = p.estado;
@@ -4881,7 +4965,7 @@ function exportExcel(){
     'Tipo': TIPO_PENDIENTE[p.tipo]||p.tipo, 'Descripción': p.desc||'',
     'Ejecutor': p.ejecutor||'',
     'Fecha creación': fmtFecha(p.fechaCrea), 'Fecha compromiso': fmtFecha(p.fechaComp),
-    'Fecha cierre': fmtFecha(p.fechaCierre), 'Estado': p.estado, 'Origen': p.origen||''
+    'Fecha cierre': fmtFecha(p.fechaCierre), 'Estado': ESTADO_PEND_LABEL[p.estado]||p.estado, 'Origen': p.origen||''
   }));
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(pendRows), 'Pendientes');
 
@@ -5195,7 +5279,8 @@ setInterval(()=>{ if(recorder.status==='recording') recorder.updateUI(); }, 1000
 //==============================================================
 function buildNav(){
   const navs = [
-    ['dashboard','Dashboard'],
+    ['porResolver','Por resolver'],
+    ['dashboard','Resumen'],
     ['equipos','Equipos'],
     ['mp','MP del mes'],
     ['ciclos','Ciclos correctivos'],
@@ -5207,6 +5292,10 @@ function buildNav(){
   nav.innerHTML = '';
   navs.forEach(([k,l])=>{
     const b = el('button',{'data-view':k,onclick:()=>navigate(k)},l);
+    if(k === 'porResolver'){
+      const n = state.pendientes.filter(p=>!p.anulado && p.estado!=='cerrado').length;
+      if(n > 0) b.appendChild(el('span',{class:'nav-badge'}, String(n)));
+    }
     if(k === 'conciliacion'){
       const pend = (state.conflictos||[]).filter(c => c.estado === 'pendiente' || c.estado === 'pospuesto').length;
       if(pend > 0) b.appendChild(el('span',{class:'nav-badge'}, String(pend)));
@@ -5330,7 +5419,7 @@ function bootstrap(){
     }
   });
   refreshStateIndicator();
-  navigate('dashboard');
+  navigate('porResolver');
 }
 document.addEventListener('DOMContentLoaded', bootstrap);
 </script>

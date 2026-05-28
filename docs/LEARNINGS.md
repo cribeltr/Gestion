@@ -235,4 +235,37 @@
 - **Dónde aplica:** build_app.py helpers `folioCicloControl` / `avisoSinCicloAbierto`
   y los 5 formularios de evento; CHANGELOG v0.28.
 
+## [2026-05-28] Fase 1 rediseño: pendientes accionables + pantalla "Por resolver" (v0.29)
+
+- **Disparador:** el usuario quiere un programa que lo empuje a RESOLVER, no solo a
+  registrar; pendientes con un estado inicial que "obligue"; pantalla de inicio
+  accionable. (Aprobó la dirección "de archivador a centro de acción".)
+- **Análisis de 13 sesiones:** vistas realmente usadas = dashboard, equipos,
+  conciliación, ficha de equipo; ciclos/pendientes/eventos como pestañas casi no se
+  abren (1 de 13). Más dudas en la ficha del equipo (28 pausas) y conciliación (14,
+  con una mirada de 54 s al filtro). 32 clics en "← Volver" (navegación ir-y-volver).
+- **Confirmado en código:** estados de pendiente eran 'creado' (auto) / 'abierto'
+  (manual) / 'cerrado', inconsistentes; ~12 lugares cuentan `!== 'cerrado'`.
+- **Hecho:** estados **No iniciado → En proceso → Resuelto** (internos
+  'no_iniciado'/'en_proceso'/'cerrado'; se CONSERVA 'cerrado' como final para no
+  tocar los ~12 conteos). Migración en `init()` y `migrate()` ('creado'/'abierto' →
+  'no_iniciado'). Helpers `normalizarEstadoPend`, `badgePend`, `cambiarEstadoPend`.
+  Botones rápidos "Empezar"/"Resolver" en la tabla. Nueva vista `porResolver` como
+  inicio (bandeja: vencidos, no iniciados, en proceso, ciclos abiertos, borradores
+  por oficializar, conflictos). "Dashboard" pasa a "Resumen". Badge en el menú.
+- **Validado:** `node --check` OK; migración 34 pendientes → 34 'no_iniciado';
+  porResolver cuenta 2 vencidos / 32 no iniciados / 3 ciclos / 31 borradores;
+  regresión `!== 'cerrado'` intacta (34 activos de 34).
+- **Heurística:** (1) el estado inicial debe tener un nombre que empuje a actuar
+  ("No iniciado"), no neutro ("creado"). (2) Para anti-procrastinación, la pantalla
+  de inicio muestra ACCIONES, no números. (3) Conservar el valor interno final
+  ('cerrado') y cambiar solo la etiqueta visible evita tocar N conteos.
+- **Pendiente de afinar con el usuario:** qué cuenta el badge del menú (hoy =
+  pendientes activos, no incluye ciclos/borradores); el diseño visual moderno y las
+  ventanas flotantes (fase siguiente); el Excel autónomo (fase siguiente).
+- **Dónde aplica:** build_app.py (ESTADO_PEND_LABEL, normalizarEstadoPend, badgePend,
+  cambiarEstadoPend, init, migrate, crearPendienteAuto, nuevoPendiente, filtro selEst,
+  selector de edición, renderPendientesTabla, exportExcel, buildNav, VIEWS.porResolver,
+  bootstrap/resetState); CHANGELOG v0.29.
+
 <!-- Próximas entradas debajo de esta línea -->
