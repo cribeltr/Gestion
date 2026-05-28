@@ -17,6 +17,13 @@ HTML = r"""<!DOCTYPE html>
 <script>__LZSTRING_PLACEHOLDER__</script>
 <!--
 CHANGELOG
+v0.37 [2026-05-28] Equipos como planilla tipo Excel.
+  - Ordenar por cualquier columna (clic en el título, ▲/▼) y un FILTRO por columna: lista de
+    valores para texto categórico (Servicio, Estado, Marca, Modelo, Unidad, Ubicación,
+    Procedencia, Equipo) y "contiene" para ID / N° Inventario / Pendientes / Días.
+  - Cada fila trae botones para registrar al instante: "➕ Evento", "➕ Pend." y "Ficha".
+  - Los accesos rápidos (En servicio técnico / No operativos / Con pendientes / Todos) aplican
+    esos filtros; la búsqueda global se mantiene; se quitaron los selects redundantes del toolbar.
 v0.36 [2026-05-28] Barra lateral agrupada (Gestionar/Registrar) + accesos rápidos en Equipos.
   - Barra lateral en dos grupos: GESTIONAR (Por resolver, Equipos, Resumen) y REGISTRAR
     (MP del mes, Conciliación). Pendientes/Ciclos/Eventos salen del menú (siguen accesibles
@@ -517,6 +524,10 @@ textarea{min-height:64px;resize:vertical;font-family:inherit;line-height:1.5}
 .qa-btn:hover{background:var(--surface-2);box-shadow:var(--shadow-sm)}
 .qa-btn.st{border-color:#ecd4a3;color:var(--st)}
 .qa-btn.noop{border-color:#f0c5c1;color:var(--noop)}
+.th-sort{cursor:pointer;white-space:nowrap;user-select:none}
+.th-sort:hover{color:var(--accent)}
+tr.filtros-col th{position:static;background:var(--surface-2);padding:4px 6px}
+tr.filtros-col input,tr.filtros-col select{width:100%;font-size:11px;padding:5px 7px;border-radius:6px;font-weight:400}
 header.top h1{font-size:14px;margin:0;font-weight:600;letter-spacing:-.01em}
 header.top h1 small{font-weight:400;color:var(--muted);margin-left:8px}
 header.top nav{display:flex;gap:0;flex:1;align-items:center;height:100%}
@@ -985,7 +996,7 @@ const SEED = __SEED_PLACEHOLDER__;
 //==============================================================
 // CONSTANTES & CATÁLOGOS
 //==============================================================
-const APP_VERSION = '0.36';
+const APP_VERSION = '0.37';
 const STORAGE_KEY = 'hhha_v1_data';
 const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 const MES_NUM = {Ene:0,Feb:1,Mar:2,Abr:3,May:4,Jun:5,Jul:6,Ago:7,Sep:8,Oct:9,Nov:10,Dic:11};
@@ -2152,22 +2163,27 @@ function renderSumAlertas(alertaDias){
 
 //---------------- EQUIPOS ----------------
 VIEWS.equipos = function(root, params){
-  const search = el('input',{type:'search',placeholder:'Buscar por N° Inv., serie, equipo, marca, modelo, servicio…',value:params.q||''});
-  const selServicio = el('select',{},
-    el('option',{value:''},'Todos los servicios'),
-    ...[...new Set(state.equipos.map(e=>e.servicio).filter(Boolean))].sort().map(s=>el('option',{value:s,selected:s===params.servicio?'selected':false},s))
-  );
-  if(params.servicio) selServicio.value = params.servicio;
-  const selEstado = el('select',{},
-    el('option',{value:''},'Todos los estados'),
-    ...ESTADOS_PRIMARIOS.map(e=>el('option',{value:e,selected:e===params.estado?'selected':false},ESTADO_LABEL[e]))
-  );
-  if(params.estado) selEstado.value = params.estado;
-  const selPend = el('select',{},
-    el('option',{value:''},'Pendientes (todos)'),
-    el('option',{value:'si'},'Con pendientes'),
-    el('option',{value:'no'},'Sin pendientes')
-  );
+  const COLS = [
+    {k:'id',l:'ID',g:e=>e.id!=null?String(e.id):'',num:true},
+    {k:'carpeta',l:'N° Carpeta',g:e=>e.carpeta!=null?String(e.carpeta):'',num:true},
+    {k:'inv',l:'N° Inventario',g:e=>e.inv||''},
+    {k:'equipo',l:'Equipo',g:e=>e.equipo||'',lista:true},
+    {k:'servicio',l:'Servicio',g:e=>e.servicio||'',lista:true},
+    {k:'unidad',l:'Unidad',g:e=>e.unidad||'',lista:true},
+    {k:'ubic',l:'Ubicación',g:e=>e.ubic||'',lista:true},
+    {k:'proc',l:'Procedencia',g:e=>e.proc||'',lista:true},
+    {k:'marca',l:'Marca',g:e=>e.marca||'',lista:true},
+    {k:'modelo',l:'Modelo',g:e=>e.modelo||'',lista:true},
+    {k:'estado',l:'Estado',g:e=>ESTADO_LABEL[e.estado]||e.estado||'',lista:true},
+    {k:'pend',l:'Pendientes',g:e=>String(pendientesDe(e.inv).filter(p=>p.estado!=='cerrado').length),num:true},
+    {k:'dias',l:'Días en estado',g:e=>e.estadoDesde?String(diasEnEstado(e)):'0',num:true}
+  ];
+  const filtros = {};
+  if(params.estado) filtros.estado = ESTADO_LABEL[params.estado] || params.estado;
+  if(params.servicio) filtros.servicio = params.servicio;
+  let ordK = null, ordDir = 1;
+  const search = el('input',{type:'search',placeholder:'Buscar en todo (N° Inv., serie, equipo, marca, modelo, servicio…)',value:params.q||''});
+  const thead = el('thead',{});
   const tbody = el('tbody',{});
   const counter = el('div',{class:'muted',style:{fontSize:'12px',padding:'8px 0'}},'');
   const chipsBar = el('div',{class:'filters'});
@@ -2196,33 +2212,61 @@ VIEWS.equipos = function(root, params){
     return res;
   }
 
+  const norm = s => (s||'').toString().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+  const valoresUnicos = c => [...new Set(state.equipos.map(e=>c.g(e)).filter(v=>v!==''))].sort((a,b)=>a.localeCompare(b,'es',{numeric:true}));
+
+  function buildHead(){
+    thead.innerHTML = '';
+    const trH = el('tr',{});
+    COLS.forEach(c=>{
+      const flecha = ordK===c.k ? (ordDir>0?' ▲':' ▼') : '';
+      trH.appendChild(el('th',{class:'th-sort',title:'Ordenar por '+c.l, onclick:()=>{ if(ordK===c.k) ordDir=-ordDir; else { ordK=c.k; ordDir=1; } render(); }}, c.l+flecha));
+    });
+    trH.appendChild(el('th',{},'Acciones'));
+    thead.appendChild(trH);
+    const trF = el('tr',{class:'filtros-col'});
+    COLS.forEach(c=>{
+      let ctrl;
+      if(c.lista){
+        ctrl = el('select',{onchange:e=>{ filtros[c.k]=e.target.value; render(); }},
+          el('option',{value:''},'(todos)'),
+          ...valoresUnicos(c).map(v=>el('option',{value:v}, v.length>24?v.slice(0,24)+'…':v)));
+        ctrl.value = filtros[c.k]||'';
+      } else {
+        ctrl = el('input',{type:'text',placeholder:'filtrar…',value:filtros[c.k]||'',oninput:e=>{ filtros[c.k]=e.target.value; clearTimeout(window.__eqf); window.__eqf=setTimeout(render,200); }});
+      }
+      trF.appendChild(el('th',{}, ctrl));
+    });
+    trF.appendChild(el('th',{}));
+    thead.appendChild(trF);
+  }
+
   function render(){
     state.equipos.forEach(recalcEstadoEquipo);
-    const q = search.value.trim().toLowerCase();
-    const fs = selServicio.value, fe = selEstado.value, fp = selPend.value;
-    const norm = s => (s||'').toString().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
-    const tokens = norm(q).split(/\s+/).filter(Boolean);
-
-    let filtered = state.equipos.filter(e => {
-      if(fs && e.servicio !== fs) return false;
-      if(fe && e.estado !== fe) return false;
-      const hayPend = pendientesDe(e.inv).some(p => p.estado !== 'cerrado');
-      if(fp === 'si' && !hayPend) return false;
-      if(fp === 'no' && hayPend) return false;
+    const tokens = norm(search.value.trim()).split(/\s+/).filter(Boolean);
+    let lista = state.equipos.filter(e => {
       if(tokens.length){
         const hay = [e.inv,e.serie,e.equipo,e.marca,e.modelo,e.servicio,e.unidad,e.ubic,e.fam,e.carpeta].map(norm).join(' ');
-        return tokens.every(t => hay.includes(t));
+        if(!tokens.every(t => hay.includes(t))) return false;
       }
+      for(const c of COLS){
+        const fv = filtros[c.k]; if(!fv) continue;
+        const val = c.g(e);
+        if(c.lista){ if(val !== fv) return false; }
+        else { if(!norm(val).includes(norm(fv))) return false; }
+      }
+      if(filtros.__conPend && !pendientesDe(e.inv).some(p=>p.estado!=='cerrado')) return false;
       return true;
     });
-    filtered = applyParamsFilter(filtered);
-
+    lista = applyParamsFilter(lista);
+    if(ordK){ const c = COLS.find(x=>x.k===ordK);
+      lista.sort((a,b)=> c.num ? ((+c.g(a)||0)-(+c.g(b)||0))*ordDir : c.g(a).localeCompare(c.g(b),'es')*ordDir);
+    }
+    buildHead();
     tbody.innerHTML = '';
-    filtered.slice(0,500).forEach(e => {
+    lista.slice(0,500).forEach(e => {
       const pend = pendientesDe(e.inv).filter(p => p.estado !== 'cerrado').length;
-      const mpEjecutada = mpDelMesEjecutada(e, new Date().getFullYear(), new Date().getMonth());
-      const mpProg = mpProgramadaEnMes(e, NUM_MES[new Date().getMonth()]);
-      tbody.appendChild(el('tr',{class:'clickable',onclick:()=>navigate('equipo',{inv:e.inv})},
+      tbody.appendChild(el('tr',{},
         el('td',{class:'num'}, e.id != null ? String(e.id) : '—'),
         el('td',{}, e.carpeta != null ? String(e.carpeta) : '—'),
         el('td',{}, el('strong',{}, e.inv||'—')),
@@ -2235,18 +2279,21 @@ VIEWS.equipos = function(root, params){
         el('td',{}, e.modelo||'—'),
         el('td',{}, badgeEstado(e.estado), (e.estado==='en_servicio_tecnico'||e.estado==='no_operativo') ? el('div',{style:{marginTop:'3px'}}, el('small',{class:'muted'}, 'Enc: '+(encargadoDe(e)||'—'))) : null),
         el('td',{class:'num'}, pend > 0 ? el('span',{class:'badge abierto'},pend) : el('small',{class:'muted'},'—')),
-        el('td',{class:'num'}, e.estadoDesde ? diasEnEstado(e)+' d' : el('small',{class:'muted'},'—'))
+        el('td',{class:'num'}, e.estadoDesde ? diasEnEstado(e)+' d' : el('small',{class:'muted'},'—')),
+        el('td',{class:'actions',style:{whiteSpace:'nowrap'}},
+          el('button',{class:'small',title:'Registrar evento',onclick:()=>nuevoEvento({invDefault:e.inv})},'➕ Evento'),
+          el('button',{class:'small',title:'Registrar pendiente',onclick:()=>nuevoPendiente({invDefault:e.inv})},'➕ Pend.'),
+          el('button',{class:'small ghost',title:'Abrir ficha',onclick:()=>navigate('equipo',{inv:e.inv})},'Ficha')
+        )
       ));
     });
-    counter.textContent = `${filtered.length} equipos${filtered.length>500?' (mostrando primeros 500)':''}`;
+    counter.textContent = `${lista.length} equipos${lista.length>500?' (mostrando primeros 500)':''}`;
     renderChips();
   }
 
   function renderChips(){
     chipsBar.innerHTML = '';
     const chips = [];
-    if(params.servicio) chips.push(['Servicio', params.servicio, ()=>{delete params.servicio; selServicio.value=''; render();}]);
-    if(params.estado) chips.push(['Estado', ESTADO_LABEL[params.estado], ()=>{delete params.estado; selEstado.value=''; render();}]);
     if(params.mes && params.mpResultado){
       const r = params.mpResultado === 'todos' ? 'Todas las MP' : params.mpResultado === 'reprog' ? 'Reprogramadas' : params.mpResultado === 'sinreg' ? 'Sin registro' : params.mpResultado;
       chips.push(['MP '+params.mes, r, ()=>{delete params.mes; delete params.mpResultado; render();}]);
@@ -2257,44 +2304,37 @@ VIEWS.equipos = function(root, params){
       el('span',{class:'k'}, k+':'), el('span',{}, v),
       el('span',{class:'x',onclick:onclr}, '×')
     )));
-    if(chips.length > 0){
+    const hayCol = Object.keys(filtros).some(k=>filtros[k]);
+    if(chips.length > 0 || hayCol || search.value){
       chipsBar.appendChild(el('button',{class:'filter-clear',onclick:()=>{
         Object.keys(params).forEach(k=>delete params[k]);
-        selServicio.value=''; selEstado.value=''; selPend.value=''; search.value='';
+        Object.keys(filtros).forEach(k=>delete filtros[k]);
+        search.value='';
         render();
       }},'Limpiar todo'));
     }
   }
 
-  [search,selServicio,selEstado,selPend].forEach(i => i.addEventListener('input', render));
+  search.addEventListener('input', ()=>{ clearTimeout(window.__eqs); window.__eqs=setTimeout(render,200); });
 
   state.equipos.forEach(recalcEstadoEquipo);
+  const limpiarFiltros = ()=>{ Object.keys(filtros).forEach(k=>delete filtros[k]); };
   const _qa = (lbl, n, fn, cls) => el('button',{class:'qa-btn'+(cls?' '+cls:''), onclick:fn}, `${lbl} (${n})`);
   const barraQA = el('div',{class:'quick-access'},
-    el('button',{class:'qa-btn',onclick:()=>{selEstado.value='';selPend.value='';delete params.estado;render();}},'Todos'),
-    _qa('En servicio técnico', state.equipos.filter(e=>e.estado==='en_servicio_tecnico').length, ()=>{selEstado.value='en_servicio_tecnico';render();}, 'st'),
-    _qa('No operativos', state.equipos.filter(e=>e.estado==='no_operativo').length, ()=>{selEstado.value='no_operativo';render();}, 'noop'),
-    _qa('Con pendientes', state.equipos.filter(e=>pendientesDe(e.inv).some(p=>p.estado!=='cerrado')).length, ()=>{selPend.value='si';render();})
+    el('button',{class:'qa-btn',onclick:()=>{limpiarFiltros();render();}},'Todos'),
+    _qa('En servicio técnico', state.equipos.filter(e=>e.estado==='en_servicio_tecnico').length, ()=>{limpiarFiltros();filtros.estado='En servicio técnico';render();}, 'st'),
+    _qa('No operativos', state.equipos.filter(e=>e.estado==='no_operativo').length, ()=>{limpiarFiltros();filtros.estado='No operativo';render();}, 'noop'),
+    _qa('Con pendientes', state.equipos.filter(e=>pendientesDe(e.inv).some(p=>p.estado!=='cerrado')).length, ()=>{limpiarFiltros();filtros.__conPend=true;render();})
   );
   root.appendChild(el('div',{class:'view'},
     el('h2',{},'Equipos'),
-    el('div',{class:'subtitle'},'Maestro de equipos biomédicos críticos. Usa los accesos rápidos o busca por equipo, marca, modelo o servicio.'),
+    el('div',{class:'subtitle'},'Planilla de equipos: ordena por cualquier columna (clic en su título), filtra en cada una y registra evento o pendiente desde la fila.'),
     barraQA,
-    el('div',{class:'toolbar'},
-      el('div',{class:'grow'},search),
-      selServicio, selEstado, selPend
-    ),
+    el('div',{class:'toolbar'}, el('div',{class:'grow'},search)),
     chipsBar,
     counter,
-    el('div',{style:{maxHeight:'calc(100vh - 280px)',overflow:'auto',border:'1px solid var(--border)',borderRadius:'6px'}},
-      el('table',{class:'data',style:{border:'none'}},
-        el('thead',{},
-          el('tr',{},
-            ['ID','N° Carpeta','N° Inventario','Equipo','Servicio','Unidad','Ubicación','Procedencia','Marca','Modelo','Estado','Pendientes','Días en estado'].map(h=>el('th',{},h))
-          )
-        ),
-        tbody
-      )
+    el('div',{style:{maxHeight:'calc(100vh - 300px)',overflow:'auto',border:'1px solid var(--border)',borderRadius:'10px'}},
+      el('table',{class:'data eq-grid',style:{border:'none'}}, thead, tbody)
     )
   ));
   render();

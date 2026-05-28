@@ -428,4 +428,23 @@
 - **Dónde aplica:** build_app.py (`NAV_GRUPOS`, `buildNav`, `encargadoDe`, `VIEWS.equipos`
   accesos rápidos, CSS sidebar/quick-access); CHANGELOG v0.36.
 
+## [2026-05-28] Equipos como planilla tipo Excel (v0.37)
+
+- **Disparador:** el usuario está acostumbrado a Excel y pidió la vista de Equipos como
+  planilla: ordenar por cualquier columna, filtro en cada columna, y botones para registrar
+  evento/pendiente desde la fila.
+- **Hecho:** se reescribió `VIEWS.equipos` con columnas declarativas (`COLS`: key, label,
+  getter, lista/num). Ordenar por clic en el título (▲/▼); filtro por columna (select de
+  valores únicos para categóricas, input "contiene" para texto/números). Botones por fila
+  "➕ Evento" / "➕ Pend." / "Ficha". Los accesos rápidos setean los filtros; la navegación
+  desde el dashboard (params.estado/servicio) se traduce a filtros de columna. Se quitaron los
+  3 selects redundantes del toolbar; queda la búsqueda global.
+- **Validado:** `node --check` OK; COLS/th-sort/filtros-col/botones presentes; selects viejos
+  eliminados. El filtro de Estado compara por etiqueta (`ESTADO_LABEL`) y coincide con el
+  getter de esa columna.
+- **Heurística:** columnas declarativas (un array de definición) hacen que encabezados,
+  filtros y celdas se generen de forma uniforme y sea trivial agregar/ordenar columnas.
+- **Dónde aplica:** build_app.py (`VIEWS.equipos` completa, CSS `.th-sort`/`.filtros-col`);
+  CHANGELOG v0.37.
+
 <!-- Próximas entradas debajo de esta línea -->
