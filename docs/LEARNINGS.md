@@ -447,4 +447,21 @@
 - **Dónde aplica:** build_app.py (`VIEWS.equipos` completa, CSS `.th-sort`/`.filtros-col`);
   CHANGELOG v0.37.
 
+## [2026-05-28] Vista "Registro MP" (carta gantt navegable) (v0.38)
+
+- **Disparador:** el usuario quiere una vista idéntica a la hoja Registro_MP-2026 + Estado /
+  Días en estado / Pendientes al final, con filtro en todas las columnas, clic → ficha y
+  poder colapsar los meses fácilmente.
+- **Hecho:** `VIEWS.registroMP` reutiliza el patrón de planilla (COLS declarativas + orden +
+  filtro por columna). Columnas: identificación completa (15: ID, Carpeta, Inventario, Equipo,
+  Servicio, Unidad, Ubicación, Procedencia, Marca, Modelo, Serie, Año, VUR, Clasificación,
+  Frecuencia) + 12 meses con P y R (24 columnas) + Estado / Días / Pendientes. Botón
+  "Ocultar/Mostrar meses" (preferencia recordada) para colapsar las 24 columnas. P =
+  `registro.P || prog`; R = `registro.R`; R='Si' en verde, C1-C8 en ámbar. "Abrir" → ficha.
+  En el menú, grupo GESTIONAR.
+- **Validado:** `node --check` OK; vista/menú/colapso/estilo presentes; muestra con datos
+  reales coherente con la matriz (2-115361: Feb P:X R:Si, May P:X R:Si…).
+- **Nota:** 894 equipos × ~42 columnas; render limitado a 500 filas, filtrar agiliza.
+- **Dónde aplica:** build_app.py (`VIEWS.registroMP`, `NAV_GRUPOS`, CSS `.mp-col`); CHANGELOG v0.38.
+
 <!-- Próximas entradas debajo de esta línea -->

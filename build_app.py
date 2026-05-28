@@ -17,6 +17,12 @@ HTML = r"""<!DOCTYPE html>
 <script>__LZSTRING_PLACEHOLDER__</script>
 <!--
 CHANGELOG
+v0.38 [2026-05-28] Nueva vista "Registro MP" (carta gantt navegable).
+  - Réplica de la hoja Registro_MP: todas las columnas de identificación del equipo + los 12
+    meses con P (programado) y R (realizado) + Estado, Días en estado y Pendientes al final.
+  - Filtro y orden en todas las columnas (como la planilla de Equipos); "Abrir" lleva a la
+    ficha. Botón "Ocultar/Mostrar meses" para colapsar las 24 columnas de P/R (se recuerda).
+  - En el menú, grupo GESTIONAR. R='Si' en verde, causales C1-C8 en ámbar.
 v0.37 [2026-05-28] Equipos como planilla tipo Excel.
   - Ordenar por cualquier columna (clic en el título, ▲/▼) y un FILTRO por columna: lista de
     valores para texto categórico (Servicio, Estado, Marca, Modelo, Unidad, Ubicación,
@@ -528,6 +534,9 @@ textarea{min-height:64px;resize:vertical;font-family:inherit;line-height:1.5}
 .th-sort:hover{color:var(--accent)}
 tr.filtros-col th{position:static;background:var(--surface-2);padding:4px 6px}
 tr.filtros-col input,tr.filtros-col select{width:100%;font-size:11px;padding:5px 7px;border-radius:6px;font-weight:400}
+.mp-col{text-align:center;min-width:30px}
+td.mp-ok{color:var(--op);font-weight:700}
+td.mp-rep{color:var(--st);font-weight:600}
 header.top h1{font-size:14px;margin:0;font-weight:600;letter-spacing:-.01em}
 header.top h1 small{font-weight:400;color:var(--muted);margin-left:8px}
 header.top nav{display:flex;gap:0;flex:1;align-items:center;height:100%}
@@ -996,7 +1005,7 @@ const SEED = __SEED_PLACEHOLDER__;
 //==============================================================
 // CONSTANTES & CATÁLOGOS
 //==============================================================
-const APP_VERSION = '0.37';
+const APP_VERSION = '0.38';
 const STORAGE_KEY = 'hhha_v1_data';
 const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 const MES_NUM = {Ene:0,Feb:1,Mar:2,Abr:3,May:4,Jun:5,Jul:6,Ago:7,Sep:8,Oct:9,Nov:10,Dic:11};
@@ -2339,6 +2348,100 @@ VIEWS.equipos = function(root, params){
   ));
   render();
   setTimeout(()=>search.focus(), 50);
+};
+
+//---------------- REGISTRO MP (carta gantt navegable) ----------------
+VIEWS.registroMP = function(root){
+  state.equipos.forEach(recalcEstadoEquipo);
+  const year = new Date().getFullYear();
+  let mostrarMeses = getPref('regmp_meses', true) !== false;
+  const filtros = {};
+  let ordK = null, ordDir = 1;
+  const norm = s => (s||'').toString().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+  const IDENT = [
+    {k:'id',l:'ID',g:e=>e.id!=null?String(e.id):'',num:true},
+    {k:'carpeta',l:'N° Carpeta',g:e=>e.carpeta!=null?String(e.carpeta):'',num:true},
+    {k:'inv',l:'N° Inventario',g:e=>e.inv||''},
+    {k:'equipo',l:'Equipo',g:e=>e.equipo||'',lista:true},
+    {k:'servicio',l:'Servicio',g:e=>e.servicio||'',lista:true},
+    {k:'unidad',l:'Unidad',g:e=>e.unidad||'',lista:true},
+    {k:'ubic',l:'Ubicación',g:e=>e.ubic||'',lista:true},
+    {k:'proc',l:'Procedencia',g:e=>e.proc||'',lista:true},
+    {k:'marca',l:'Marca',g:e=>e.marca||'',lista:true},
+    {k:'modelo',l:'Modelo',g:e=>e.modelo||'',lista:true},
+    {k:'serie',l:'Serie',g:e=>e.serie||''},
+    {k:'ano',l:'Año',g:e=>e.ano!=null?String(e.ano):'',lista:true},
+    {k:'vur',l:'VUR',g:e=>e.vur!=null?String(e.vur):'',lista:true},
+    {k:'clasif',l:'Clasificación',g:e=>e.clasif||'',lista:true},
+    {k:'freq',l:'Frecuencia MP',g:e=>e.freq||'',lista:true}
+  ];
+  const FINAL = [
+    {k:'estado',l:'Estado',g:e=>ESTADO_LABEL[e.estado]||e.estado||'',lista:true},
+    {k:'dias',l:'Días en estado',g:e=>e.estadoDesde?String(diasEnEstado(e)):'0',num:true},
+    {k:'pendi',l:'Pendientes',g:e=>String(pendientesDe(e.inv).filter(p=>p.estado!=='cerrado').length),num:true}
+  ];
+  const mesCols = () => { const a=[]; MESES.forEach(m=>{ a.push({k:'P_'+m,l:m+'·P',g:e=>((e.registro||{})[m]||{}).P||(e.prog||{})[m]||'',lista:true,mes:true}); a.push({k:'R_'+m,l:m+'·R',g:e=>((e.registro||{})[m]||{}).R||'',lista:true,mes:true,esR:true}); }); return a; };
+  const cols = () => mostrarMeses ? [...IDENT, ...mesCols(), ...FINAL] : [...IDENT, ...FINAL];
+  const colByK = k => cols().find(x=>x.k===k);
+  const valoresUnicos = c => [...new Set(state.equipos.map(e=>c.g(e)).filter(v=>v!==''))].sort((a,b)=>a.localeCompare(b,'es',{numeric:true}));
+
+  const thead = el('thead',{}); const tbody = el('tbody',{});
+  const counter = el('div',{class:'muted',style:{fontSize:'12px',padding:'8px 0'}},'');
+  const search = el('input',{type:'search',placeholder:'Buscar equipo, marca, modelo, servicio…'});
+
+  function buildHead(){
+    const CS = cols();
+    thead.innerHTML = '';
+    const trH = el('tr',{});
+    CS.forEach(c => trH.appendChild(el('th',{class:'th-sort'+(c.mes?' mp-col':''), onclick:()=>{ if(ordK===c.k) ordDir=-ordDir; else { ordK=c.k; ordDir=1; } render(); }}, c.l + (ordK===c.k?(ordDir>0?' ▲':' ▼'):''))));
+    trH.appendChild(el('th',{},'Acción'));
+    thead.appendChild(trH);
+    const trF = el('tr',{class:'filtros-col'});
+    CS.forEach(c=>{
+      let ctrl;
+      if(c.lista){ ctrl = el('select',{onchange:e=>{ filtros[c.k]=e.target.value; render(); }}, el('option',{value:''},'(todos)'), ...valoresUnicos(c).map(v=>el('option',{value:v}, v.length>16?v.slice(0,16)+'…':v))); ctrl.value = filtros[c.k]||''; }
+      else { ctrl = el('input',{type:'text',placeholder:'…',value:filtros[c.k]||'',oninput:e=>{ filtros[c.k]=e.target.value; clearTimeout(window.__rmf); window.__rmf=setTimeout(render,200); }}); }
+      trF.appendChild(el('th',{class:c.mes?'mp-col':''}, ctrl));
+    });
+    trF.appendChild(el('th',{}));
+    thead.appendChild(trF);
+  }
+  function render(){
+    state.equipos.forEach(recalcEstadoEquipo);
+    const CS = cols();
+    const tokens = norm(search.value.trim()).split(/\s+/).filter(Boolean);
+    let lista = state.equipos.filter(e=>{
+      if(tokens.length){ const hay=[e.inv,e.serie,e.equipo,e.marca,e.modelo,e.servicio,e.unidad,e.ubic].map(norm).join(' '); if(!tokens.every(t=>hay.includes(t))) return false; }
+      for(const c of CS){ const fv=filtros[c.k]; if(!fv) continue; const val=c.g(e); if(c.lista){ if(val!==fv) return false; } else if(!norm(val).includes(norm(fv))) return false; }
+      return true;
+    });
+    if(ordK){ const c=colByK(ordK); if(c) lista.sort((a,b)=> c.num?((+c.g(a)||0)-(+c.g(b)||0))*ordDir : c.g(a).localeCompare(c.g(b),'es')*ordDir); }
+    buildHead();
+    tbody.innerHTML = '';
+    lista.slice(0,500).forEach(e=>{
+      const tr = el('tr',{});
+      CS.forEach(c=>{
+        if(c.k==='estado') tr.appendChild(el('td',{}, badgeEstado(e.estado)));
+        else if(c.k==='pendi'){ const n=pendientesDe(e.inv).filter(p=>p.estado!=='cerrado').length; tr.appendChild(el('td',{class:'num'}, n>0?el('span',{class:'badge abierto'},n):el('small',{class:'muted'},'—'))); }
+        else if(c.mes){ const v=c.g(e); tr.appendChild(el('td',{class:'mp-col'+(c.esR&&v==='Si'?' mp-ok':'')+(c.esR&&/^C[1-8]$/.test(v)?' mp-rep':'')}, v||'')); }
+        else tr.appendChild(el('td',{}, c.g(e)||'—'));
+      });
+      tr.appendChild(el('td',{class:'actions'}, el('button',{class:'small',onclick:()=>navigate('equipo',{inv:e.inv})},'Abrir')));
+      tbody.appendChild(tr);
+    });
+    counter.textContent = `${lista.length} equipos${lista.length>500?' (mostrando primeros 500)':''}`;
+  }
+  search.addEventListener('input', ()=>{ clearTimeout(window.__rms); window.__rms=setTimeout(render,200); });
+  const btnMeses = el('button',{class:'qa-btn',onclick:()=>{ mostrarMeses=!mostrarMeses; setPref('regmp_meses',mostrarMeses); save({internal:true}); btnMeses.textContent = mostrarMeses?'➖ Ocultar meses':'➕ Mostrar meses'; render(); }}, mostrarMeses?'➖ Ocultar meses':'➕ Mostrar meses');
+  root.appendChild(el('div',{class:'view'},
+    el('h2',{},'Registro MP '+year),
+    el('div',{class:'subtitle'},'Carta gantt navegable: programado (P) y realizado (R) por mes, más estado, días y pendientes. Ordena y filtra en cualquier columna; "Abrir" lleva a la ficha.'),
+    el('div',{class:'toolbar'}, el('div',{class:'grow'},search), btnMeses, counter),
+    el('div',{style:{overflow:'auto',maxHeight:'calc(100vh - 230px)',border:'1px solid var(--border)',borderRadius:'10px'}},
+      el('table',{class:'data eq-grid',style:{border:'none',fontSize:'12px'}}, thead, tbody)
+    )
+  ));
+  render();
 };
 
 //---------------- EQUIPO (ficha) ----------------
@@ -5611,7 +5714,7 @@ setInterval(()=>{ if(recorder.status==='recording') recorder.updateUI(); }, 1000
 // Barra lateral agrupada en los dos momentos del trabajo. Pendientes/Ciclos/Eventos
 // no van en el menú: se acceden desde "Por resolver" y desde la ficha del equipo.
 const NAV_GRUPOS = [
-  ['GESTIONAR', [['porResolver','Por resolver'],['equipos','Equipos'],['dashboard','Resumen']]],
+  ['GESTIONAR', [['porResolver','Por resolver'],['equipos','Equipos'],['registroMP','Registro MP'],['dashboard','Resumen']]],
   ['REGISTRAR', [['mp','MP del mes'],['conciliacion','Conciliación']]]
 ];
 function navBadge(k, b){
