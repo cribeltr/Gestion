@@ -352,4 +352,26 @@
 - **Dónde aplica:** build_app.py (`resultadoMPMes`/`mpEstadoMes`/`mpDelMesEjecutada`,
   `renderSumMesesMP`, `renderSumEjecutoresMP`, `VIEWS.mp`, `recorder`, `toast`); CHANGELOG v0.33.
 
+## [2026-05-28] Cacería proactiva: el estado del equipo también ignoraba la gantt (v0.34)
+
+- **Disparador:** el usuario preguntó por qué no vi venir el bug de MP. **Causa real de mi
+  falla:** validé con el seed (donde las MP son eventos), no con su backup real (donde la
+  actividad vive en la matriz), y no simulé su flujo completo aunque me lo describió. Hice
+  una cacería con sus datos reales.
+- **Hallazgo (mismo patrón):** `recalcEstadoEquipo` derivaba el estado SOLO de eventos →
+  811 de 894 equipos "Desconocido". De esos, 31 tenían causal de no-operatividad en la
+  gantt (C2=15, C3=11, Baja=5): marcarlos a todos operativo habría repetido el error.
+- **Hecho:** sin eventos de estado, se infiere de la matriz (`MP_CAUSAL_ESTADO`: C2→serv.
+  técnico, C3/FS/NU→no operativo, Baja→baja); si no hay falla → operativo. Resultado:
+  858 operativo / 16 no op / 15 serv. técnico / 5 baja / 0 desconocido.
+- **Auditoría completa (datos reales):** 0 IDs duplicados, 0 huérfanos, 0 fechas corridas,
+  contadores OK, MP por mes coherente con la gantt en los 12 meses. Sin otros bugs de integridad.
+- **Heurística de PROCESO (la importante):** validar SIEMPRE con el backup real del usuario
+  y simular su flujo de punta a punta, no el seed ni funciones aisladas. Las demoras
+  (`think_time` altos) en `sesiones/` son señal de BUG, no solo de UX. Todo dato con doble
+  representación (matriz/eventos) debe cruzarse en TODA la lógica.
+- **Pendiente:** idempotencia al reimportar el maestro (no verificable sin el `.xlsm` del usuario).
+- **Dónde aplica:** build_app.py (`MP_CAUSAL_ESTADO`, `estadoDesdeMatriz`,
+  `recalcEstadoEquipo`); CHANGELOG v0.34.
+
 <!-- Próximas entradas debajo de esta línea -->

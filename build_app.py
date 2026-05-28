@@ -17,6 +17,13 @@ HTML = r"""<!DOCTYPE html>
 <script>__LZSTRING_PLACEHOLDER__</script>
 <!--
 CHANGELOG
+v0.34 [2026-05-28] Estado del equipo: se infiere de la carta gantt; por defecto operativo.
+  - Antes el estado operativo se calculaba SOLO desde eventos: 811 de 894 equipos quedaban
+    "Desconocido" porque su actividad vive en la carta gantt (mismo patrón que el bug de MP).
+  - Ahora recalcEstadoEquipo, sin eventos con estado, infiere de la matriz (MP_CAUSAL_ESTADO):
+    C2 -> en servicio técnico, C3/FS/NU -> no operativo, Baja -> baja. Si la gantt no indica
+    falla -> operativo. Datos reales: ~858 operativo, 15 serv. técnico, 16 no operativo, 5 baja,
+    en vez de 811 desconocido.
 v0.33 [2026-05-28] Fix MP del mes (carta gantt + eventos), navegación de meses/año, grabador.
   - BUG: la MP del mes se consideraba "pendiente" mirando SOLO eventos, ignorando la
     matriz registro[mes].R (carta gantt). Un equipo con la MP marcada en la gantt pero
@@ -940,7 +947,7 @@ const SEED = __SEED_PLACEHOLDER__;
 //==============================================================
 // CONSTANTES & CATÁLOGOS
 //==============================================================
-const APP_VERSION = '0.33';
+const APP_VERSION = '0.34';
 const STORAGE_KEY = 'hhha_v1_data';
 const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 const MES_NUM = {Ene:0,Feb:1,Mar:2,Abr:3,May:4,Jun:5,Jul:6,Ago:7,Sep:8,Oct:9,Nov:10,Dic:11};
@@ -1253,6 +1260,19 @@ function conflictosDe(inv){ return (state.conflictos||[]).filter(c => c.inv === 
 function ciclosDe(inv){ return state.ciclos.filter(c => c.inv === inv); }
 function ciclosAbiertosDe(inv){ return state.ciclos.filter(c => c.inv === inv && c.estado === 'abierto'); }
 
+// Mapeo de causal de MP de la carta gantt -> estado operativo del equipo.
+// C2 = en servicio técnico, C3 = no operativo (espera repuestos), FS/NU = no operativo, Baja = baja.
+// C1, C4-C8 y 'Si' NO indican falla del equipo -> se asume operativo.
+const MP_CAUSAL_ESTADO = {C2:'en_servicio_tecnico', C3:'no_operativo', FS:'no_operativo', NU:'no_operativo', Baja:'baja'};
+// Cuando no hay eventos que declaren estado, infiere desde la carta gantt usando el
+// resultado del último mes registrado del año vigente. Devuelve {estado,fecha} o null.
+function estadoDesdeMatriz(equipo){
+  let ultR = null, ultMesIdx = -1;
+  MESES.forEach((m, idx) => { const r = ((equipo.registro||{})[m]||{}).R; if(r){ ultR = r; ultMesIdx = idx; } });
+  const est = MP_CAUSAL_ESTADO[ultR];
+  if(est) return {estado: est, fecha: `${new Date().getFullYear()}-${String(ultMesIdx+1).padStart(2,'0')}-15`};
+  return null;
+}
 function recalcEstadoEquipo(equipo){
   // Deriva estado actual del último evento que declaró estado.
   // Si no hay eventos no anulados con estado, devuelve 'desconocido'.
@@ -1279,8 +1299,12 @@ function recalcEstadoEquipo(equipo){
       return;
     }
   }
-  // No hay eventos con estado declarado → desconocido
-  equipo.estado = 'desconocido';
+  // Sin eventos que declaren estado: inferir de la carta gantt (causal de MP del último
+  // mes registrado). Si la gantt tampoco indica falla, se asume operativo (el equipo
+  // funciona mientras no haya señal de problema). Antes quedaba 'desconocido'.
+  const m = estadoDesdeMatriz(equipo);
+  if(m){ equipo.estado = m.estado; equipo.estadoDesde = m.fecha; return; }
+  equipo.estado = 'operativo';
   equipo.estadoDesde = null;
 }
 
