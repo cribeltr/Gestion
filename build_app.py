@@ -17,6 +17,14 @@ HTML = r"""<!DOCTYPE html>
 <script>__LZSTRING_PLACEHOLDER__</script>
 <!--
 CHANGELOG
+v0.31 [2026-05-28] Menú simplificado: principales + desplegable "Más".
+  - Arriba quedan solo las vistas frecuentes (según el análisis de sesiones):
+    Por resolver · Equipos · Conciliación · MP del mes.
+  - Resumen, Pendientes, Ciclos correctivos y Eventos pasan a un desplegable "Más ▾"
+    (no se elimina nada; siguen a un clic y también se llegan desde "Por resolver").
+  - El botón "Más" se marca activo cuando la vista actual es una de esas. El menú se
+    cierra al elegir o al hacer click fuera. NAV_PRINCIPAL/NAV_SECUNDARIO centralizan
+    la lista para no duplicarla.
 v0.30 [2026-05-28] Look más moderno (aprobado en muestra) + "Por resolver" en tarjetas.
   - Capa de estilo moderno añadida al final del <style> (sin alterar la estructura
     ni los selectores existentes, para no romper): bordes redondeados mayores y
@@ -852,6 +860,13 @@ table.data{border-radius:var(--r);box-shadow:var(--shadow-sm)}
 .pr-card .pr-sub{font-size:12.5px;color:var(--muted);margin-top:3px;overflow:hidden;text-overflow:ellipsis}
 .pr-card .pr-acts{display:flex;gap:8px;flex:none}
 .pr-allclear{text-align:center;padding:54px 20px;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:var(--r)}
+/* Menú "Más" (navegación secundaria) */
+header.top nav .nav-more{position:relative;height:100%;display:flex;align-items:center}
+header.top nav .nav-more-menu{display:none;position:absolute;top:calc(100% - 7px);left:0;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-lg);padding:6px;min-width:200px;z-index:60}
+header.top nav .nav-more.open .nav-more-menu{display:block}
+header.top nav .nav-more-menu button{display:block;width:100%;text-align:left;background:transparent;border:none;border-radius:8px;padding:9px 12px;height:auto;color:var(--text-2);font-weight:600}
+header.top nav .nav-more-menu button:hover{background:var(--surface-2);color:var(--text)}
+header.top nav .nav-more-menu button.active{background:var(--accent-soft);color:var(--accent)}
 </style>
 </head>
 <body>
@@ -902,7 +917,7 @@ const SEED = __SEED_PLACEHOLDER__;
 //==============================================================
 // CONSTANTES & CATÁLOGOS
 //==============================================================
-const APP_VERSION = '0.30';
+const APP_VERSION = '0.31';
 const STORAGE_KEY = 'hhha_v1_data';
 const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 const MES_NUM = {Ene:0,Feb:1,Mar:2,Abr:3,May:4,Jun:5,Jul:6,Ago:7,Sep:8,Oct:9,Nov:10,Dic:11};
@@ -5342,33 +5357,51 @@ setInterval(()=>{ if(recorder.status==='recording') recorder.updateUI(); }, 1000
 //==============================================================
 // INIT
 //==============================================================
+const NAV_PRINCIPAL = [['porResolver','Por resolver'],['equipos','Equipos'],['conciliacion','Conciliación'],['mp','MP del mes']];
+const NAV_SECUNDARIO = [['dashboard','Resumen'],['pendientes','Pendientes'],['ciclos','Ciclos correctivos'],['eventos','Eventos']];
+function navBadge(k, b){
+  if(k === 'porResolver'){
+    const n = state.pendientes.filter(p=>!p.anulado && p.estado!=='cerrado').length;
+    if(n > 0) b.appendChild(el('span',{class:'nav-badge'}, String(n)));
+  }
+  if(k === 'conciliacion'){
+    const pend = (state.conflictos||[]).filter(c => c.estado === 'pendiente' || c.estado === 'pospuesto').length;
+    if(pend > 0) b.appendChild(el('span',{class:'nav-badge'}, String(pend)));
+  }
+}
 function buildNav(){
-  const navs = [
-    ['porResolver','Por resolver'],
-    ['dashboard','Resumen'],
-    ['equipos','Equipos'],
-    ['mp','MP del mes'],
-    ['ciclos','Ciclos correctivos'],
-    ['pendientes','Pendientes'],
-    ['eventos','Eventos'],
-    ['conciliacion','Conciliación']
-  ];
+  // Cerrar el menú "Más" al hacer click fuera (se registra una sola vez).
+  if(!window.__navMoreBound){ window.__navMoreBound = true;
+    document.addEventListener('click', e=>{
+      if(!e.target.closest('.nav-more')) document.querySelectorAll('.nav-more.open').forEach(x=>x.classList.remove('open'));
+    });
+  }
   const nav = $('#nav');
   nav.innerHTML = '';
-  navs.forEach(([k,l])=>{
+  NAV_PRINCIPAL.forEach(([k,l])=>{
     const b = el('button',{'data-view':k,onclick:()=>navigate(k)},l);
-    if(k === 'porResolver'){
-      const n = state.pendientes.filter(p=>!p.anulado && p.estado!=='cerrado').length;
-      if(n > 0) b.appendChild(el('span',{class:'nav-badge'}, String(n)));
-    }
-    if(k === 'conciliacion'){
-      const pend = (state.conflictos||[]).filter(c => c.estado === 'pendiente' || c.estado === 'pospuesto').length;
-      if(pend > 0) b.appendChild(el('span',{class:'nav-badge'}, String(pend)));
-    }
+    navBadge(k,b);
     nav.appendChild(b);
   });
+  // Menú "Más" con las vistas secundarias
+  const wrap = el('div',{class:'nav-more'});
+  const toggle = el('button',{'data-view':'__more__', onclick:()=>wrap.classList.toggle('open')}, 'Más ▾');
+  const menu = el('div',{class:'nav-more-menu'});
+  NAV_SECUNDARIO.forEach(([k,l])=>{
+    const ob = el('button',{'data-view':k, onclick:()=>{ wrap.classList.remove('open'); navigate(k); }}, l);
+    navBadge(k,ob);
+    menu.appendChild(ob);
+  });
+  wrap.appendChild(toggle); wrap.appendChild(menu);
+  nav.appendChild(wrap);
 }
-function refreshNav(){ buildNav(); $$('#nav button').forEach(b => b.classList.toggle('active', b.dataset.view === currentView)); }
+function refreshNav(){
+  buildNav();
+  $$('#nav button').forEach(b => b.classList.toggle('active', b.dataset.view === currentView));
+  // Si la vista actual está en el menú "Más", marcar ese botón como activo.
+  const moreBtn = $('#nav [data-view="__more__"]');
+  if(moreBtn && NAV_SECUNDARIO.some(([k])=>k===currentView)) moreBtn.classList.add('active');
+}
 
 function quickSearch(){
   const input = el('input',{type:'search',placeholder:'N° Inv · serie · equipo · marca · modelo · servicio…',class:'quick-search-input',autocomplete:'off'});

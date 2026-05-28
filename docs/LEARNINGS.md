@@ -288,4 +288,20 @@
   CHANGELOG v0.30. Falta (fases siguientes): Excel autónomo, simplificar el menú,
   y pulir vista por vista (ficha de equipo, conciliación) con el mismo lenguaje.
 
+## [2026-05-28] Menú simplificado con desplegable "Más" (v0.31)
+
+- **Disparador:** el usuario eligió simplificar el menú (8 pestañas = ruido). El
+  análisis de sesiones mostró que solo 4 vistas se usan seguido.
+- **Hecho:** `NAV_PRINCIPAL` (Por resolver · Equipos · Conciliación · MP del mes)
+  arriba; `NAV_SECUNDARIO` (Resumen · Pendientes · Ciclos · Eventos) en un desplegable
+  "Más ▾". No se elimina nada; las vistas siguen accesibles (y también desde "Por
+  resolver"). El botón "Más" se marca activo si la vista actual es secundaria. Cierre
+  al hacer click fuera con un listener único (flag `window.__navMoreBound`).
+- **Validado:** `node --check` OK; las 8 `VIEWS` siguen existiendo; desplegable presente.
+- **Heurística:** esconder ≠ eliminar; el análisis de uso real decide qué va arriba.
+  Centralizar las listas (`NAV_PRINCIPAL`/`NAV_SECUNDARIO`) evita duplicarlas entre
+  `buildNav` y `refreshNav`.
+- **Dónde aplica:** build_app.py (NAV_PRINCIPAL/SECUNDARIO, navBadge, buildNav,
+  refreshNav, CSS `.nav-more`); CHANGELOG v0.31. Falta: Excel autónomo y pulir vistas.
+
 <!-- Próximas entradas debajo de esta línea -->
