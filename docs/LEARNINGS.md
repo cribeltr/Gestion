@@ -212,4 +212,27 @@
 - **Dónde aplica:** build_app.py (header ~782 + sustitución final de
   `__APP_VERSION__`); CHANGELOG v0.27.
 
+## [2026-05-28] Folio del ciclo: preselección + aviso (v0.28)
+
+- **Disparador:** el usuario reportó que en la Reparación "el folio no se carga" y
+  que si la solicitud sigue abierta debería mostrarlo.
+- **Confirmado:** el campo folio era `ciclosAb.length ? <select con '— sin ciclo —'
+  primero> : <input mudo>`, repetido idéntico en 5 formularios (Visita, Orden de
+  Compra, Envío, Recepción, Reparación). Con ciclo abierto el folio SÍ estaba en la
+  lista, pero el `<select>` arrancaba en "— sin ciclo —" (no preseleccionado) → el
+  usuario debía abrirlo y elegir; si no elegía, la Reparación operativa guardaba
+  folio vacío y NO cerraba el ciclo. Sin ciclo abierto: casilla muda sin explicación.
+- **Arreglo:** helper único `folioCicloControl(ciclosAb)` que preselecciona el ciclo
+  abierto (`sel.value = ciclosAb[0].folio`; "— sin vincular —" al final) o entrega un
+  input manual si no hay. Reparación y Recepción muestran `avisoSinCicloAbierto()`
+  (notice warn) cuando no hay ciclo. Validado: `node --check` OK; el helper precarga
+  "19-3788" con ciclo y devuelve input sin ciclo; 5 usos + 1 definición.
+- **Heurística:** (1) un `<select>` de vinculación debe venir preseleccionado al valor
+  más probable, no en una opción vacía, o el usuario cree que "no carga". (2) Una
+  casilla sin datos debe explicar por qué (aviso), no quedar muda. (3) La expresión
+  repetida 5 veces se unificó en un helper → menos código y un solo lugar que tocar
+  (alineado con el objetivo de simplificar la interfaz).
+- **Dónde aplica:** build_app.py helpers `folioCicloControl` / `avisoSinCicloAbierto`
+  y los 5 formularios de evento; CHANGELOG v0.28.
+
 <!-- Próximas entradas debajo de esta línea -->

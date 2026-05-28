@@ -19,9 +19,19 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
 <script>var LZString=function(){var r=String.fromCharCode,o="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=",n="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-$",e={};function t(r,o){if(!e[r]){e[r]={};for(var n=0;n<r.length;n++)e[r][r.charAt(n)]=n}return e[r][o]}var i={compressToBase64:function(r){if(null==r)return"";var n=i._compress(r,6,function(r){return o.charAt(r)});switch(n.length%4){default:case 0:return n;case 1:return n+"===";case 2:return n+"==";case 3:return n+"="}},decompressFromBase64:function(r){return null==r?"":""==r?null:i._decompress(r.length,32,function(n){return t(o,r.charAt(n))})},compressToUTF16:function(o){return null==o?"":i._compress(o,15,function(o){return r(o+32)})+" "},decompressFromUTF16:function(r){return null==r?"":""==r?null:i._decompress(r.length,16384,function(o){return r.charCodeAt(o)-32})},compressToUint8Array:function(r){for(var o=i.compress(r),n=new Uint8Array(2*o.length),e=0,t=o.length;e<t;e++){var s=o.charCodeAt(e);n[2*e]=s>>>8,n[2*e+1]=s%256}return n},decompressFromUint8Array:function(o){if(null==o)return i.decompress(o);for(var n=new Array(o.length/2),e=0,t=n.length;e<t;e++)n[e]=256*o[2*e]+o[2*e+1];var s=[];return n.forEach(function(o){s.push(r(o))}),i.decompress(s.join(""))},compressToEncodedURIComponent:function(r){return null==r?"":i._compress(r,6,function(r){return n.charAt(r)})},decompressFromEncodedURIComponent:function(r){return null==r?"":""==r?null:(r=r.replace(/ /g,"+"),i._decompress(r.length,32,function(o){return t(n,r.charAt(o))}))},compress:function(o){return i._compress(o,16,function(o){return r(o)})},_compress:function(r,o,n){if(null==r)return"";var e,t,i,s={},u={},a="",p="",c="",l=2,f=3,h=2,d=[],m=0,v=0;for(i=0;i<r.length;i+=1)if(a=r.charAt(i),Object.prototype.hasOwnProperty.call(s,a)||(s[a]=f++,u[a]=!0),p=c+a,Object.prototype.hasOwnProperty.call(s,p))c=p;else{if(Object.prototype.hasOwnProperty.call(u,c)){if(c.charCodeAt(0)<256){for(e=0;e<h;e++)m<<=1,v==o-1?(v=0,d.push(n(m)),m=0):v++;for(t=c.charCodeAt(0),e=0;e<8;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1}else{for(t=1,e=0;e<h;e++)m=m<<1|t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t=0;for(t=c.charCodeAt(0),e=0;e<16;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1}0==--l&&(l=Math.pow(2,h),h++),delete u[c]}else for(t=s[c],e=0;e<h;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1;0==--l&&(l=Math.pow(2,h),h++),s[p]=f++,c=String(a)}if(""!==c){if(Object.prototype.hasOwnProperty.call(u,c)){if(c.charCodeAt(0)<256){for(e=0;e<h;e++)m<<=1,v==o-1?(v=0,d.push(n(m)),m=0):v++;for(t=c.charCodeAt(0),e=0;e<8;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1}else{for(t=1,e=0;e<h;e++)m=m<<1|t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t=0;for(t=c.charCodeAt(0),e=0;e<16;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1}0==--l&&(l=Math.pow(2,h),h++),delete u[c]}else for(t=s[c],e=0;e<h;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1;0==--l&&(l=Math.pow(2,h),h++)}for(t=2,e=0;e<h;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1;for(;;){if(m<<=1,v==o-1){d.push(n(m));break}v++}return d.join("")},decompress:function(r){return null==r?"":""==r?null:i._decompress(r.length,32768,function(o){return r.charCodeAt(o)})},_decompress:function(o,n,e){var t,i,s,u,a,p,c,l=[],f=4,h=4,d=3,m="",v=[],g={val:e(0),position:n,index:1};for(t=0;t<3;t+=1)l[t]=t;for(s=0,a=Math.pow(2,2),p=1;p!=a;)u=g.val&g.position,g.position>>=1,0==g.position&&(g.position=n,g.val=e(g.index++)),s|=(u>0?1:0)*p,p<<=1;switch(s){case 0:for(s=0,a=Math.pow(2,8),p=1;p!=a;)u=g.val&g.position,g.position>>=1,0==g.position&&(g.position=n,g.val=e(g.index++)),s|=(u>0?1:0)*p,p<<=1;c=r(s);break;case 1:for(s=0,a=Math.pow(2,16),p=1;p!=a;)u=g.val&g.position,g.position>>=1,0==g.position&&(g.position=n,g.val=e(g.index++)),s|=(u>0?1:0)*p,p<<=1;c=r(s);break;case 2:return""}for(l[3]=c,i=c,v.push(c);;){if(g.index>o)return"";for(s=0,a=Math.pow(2,d),p=1;p!=a;)u=g.val&g.position,g.position>>=1,0==g.position&&(g.position=n,g.val=e(g.index++)),s|=(u>0?1:0)*p,p<<=1;switch(c=s){case 0:for(s=0,a=Math.pow(2,8),p=1;p!=a;)u=g.val&g.position,g.position>>=1,0==g.position&&(g.position=n,g.val=e(g.index++)),s|=(u>0?1:0)*p,p<<=1;l[h++]=r(s),c=h-1,f--;break;case 1:for(s=0,a=Math.pow(2,16),p=1;p!=a;)u=g.val&g.position,g.position>>=1,0==g.position&&(g.position=n,g.val=e(g.index++)),s|=(u>0?1:0)*p,p<<=1;l[h++]=r(s),c=h-1,f--;break;case 2:return v.join("")}if(0==f&&(f=Math.pow(2,d),d++),l[c])m=l[c];else{if(c!==h)return null;m=i+i.charAt(0)}v.push(m),l[h++]=i+m.charAt(0),i=m,0==--f&&(f=Math.pow(2,d),d++)}}};return i}();"function"==typeof define&&define.amd?define(function(){return LZString}):"undefined"!=typeof module&&null!=module?module.exports=LZString:"undefined"!=typeof angular&&null!=angular&&angular.module("LZString",[]).factory("LZString",function(){return LZString});</script>
 <!--
 CHANGELOG
+v0.28 [2026-05-28] El folio del ciclo se preselecciona; aviso si no hay ciclo abierto.
+  - En los eventos que se vinculan a un ciclo (Visita, Orden de Compra, Envío,
+    Recepción, Reparación), el campo "Folio SIGEM" ahora PRESELECCIONA el ciclo
+    correctivo abierto del equipo en vez de quedar en "— sin ciclo —". El folio se
+    carga solo, y así la Reparación/Recepción operativa cierra el ciclo correcto
+    (antes, si el usuario no elegía el folio, no se cerraba).
+  - Si el equipo no tiene ciclo abierto, Reparación y Recepción muestran un aviso
+    claro (en vez de una casilla muda): revisar si la Solicitud fue anulada o cerrada.
+  - Unificado en el helper folioCicloControl(), reutilizado en los 5 formularios
+    (antes era la misma expresión repetida 5 veces).
 v0.27 [2026-05-28] El número de versión del encabezado se sincroniza solo.
   - El encabezado mostraba "v0.23" fijo (escrito a mano), sin actualizarse al subir
-    APP_VERSION en versiones siguientes. Ahora usa el placeholder 0.27
+    APP_VERSION en versiones siguientes. Ahora usa el placeholder 0.28
     que build_app.py reemplaza con el valor real de APP_VERSION al generar: una
     sola fuente de verdad, no vuelve a quedar desfasado.
 v0.26 [2026-05-28] Cierre de ciclo por Recepción + Reparación "en servicio técnico".
@@ -786,7 +796,7 @@ header.top nav button .nav-badge{display:inline-block;margin-left:6px;padding:0 
 <body>
 <div class="app">
   <header class="top">
-    <h1>HHHA <small>Equipos Críticos · v0.27</small></h1>
+    <h1>HHHA <small>Equipos Críticos · v0.28</small></h1>
     <nav id="nav"></nav>
     <div class="tools">
       <span id="state-indicator" class="state-indicator" title="">—</span>
@@ -831,7 +841,7 @@ const SEED = {"equipos":[{"id":1,"carpeta":1,"inv":"2-115361","fam":"Incubadoras
 //==============================================================
 // CONSTANTES & CATÁLOGOS
 //==============================================================
-const APP_VERSION = '0.27';
+const APP_VERSION = '0.28';
 const STORAGE_KEY = 'hhha_v1_data';
 const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 const MES_NUM = {Ene:0,Feb:1,Mar:2,Abr:3,May:4,Jun:5,Jul:6,Ago:7,Sep:8,Oct:9,Nov:10,Dic:11};
@@ -3892,6 +3902,24 @@ function mpRapida(opts){
 //==============================================================
 // FORMULARIO EVENTO
 //==============================================================
+// Campo "Folio SIGEM" del ciclo correctivo. Con ciclos abiertos: lista preseleccionada
+// en el ciclo abierto (para que el folio "se cargue" solo); sin ciclos: casilla manual.
+function folioCicloControl(ciclosAb){
+  if(!ciclosAb.length) return el('input',{type:'text',placeholder:'Folio SIGEM (sin ciclo abierto)'});
+  const sel = el('select',{},
+    ...ciclosAb.map(c=>el('option',{value:c.folio}, c.folio)),
+    el('option',{value:''},'— sin vincular —')
+  );
+  sel.value = ciclosAb[0].folio;
+  return sel;
+}
+// Aviso para eventos de cierre (Reparación / Recepción) cuando no hay ciclo abierto.
+function avisoSinCicloAbierto(){
+  return el('div',{class:'notice warn'},
+    'Este equipo no tiene un ciclo correctivo abierto. Normalmente esto se vincula a una ' +
+    'Solicitud de trabajo abierta: revisa si fue anulada o ya cerrada. Si igual necesitas ' +
+    'registrarlo, escribe el folio a mano.');
+}
 function nuevoEvento(opts){
   let tipo = opts.tipoDefault || null;
   let invSel = opts.invDefault || '';
@@ -3940,7 +3968,7 @@ function nuevoEvento(opts){
         const empresa = el('input',{type:'text'});
         const tecnico = el('input',{type:'text'});
         const tipoVisita = el('select',{}, el('option',{value:'diagnóstica'},'Diagnóstica'),el('option',{value:'correctiva'},'Correctiva'));
-        const folio = ciclosAb.length ? el('select',{},el('option',{value:''},'— sin ciclo —'),...ciclosAb.map(c=>el('option',{value:c.folio},c.folio))) : el('input',{type:'text',placeholder:'Folio SIGEM'});
+        const folio = folioCicloControl(ciclosAb);
         const estado = el('select',{}, ...['no operativo','operativo','en servicio técnico'].map(s=>el('option',{value:s},s)));
         extra = {empresa,tecnico,tipoVisita,folio,estado};
         campos.appendChild(el('div',{class:'grid-3'},
@@ -3957,7 +3985,7 @@ function nuevoEvento(opts){
         const empresa = el('input',{type:'text'});
         const via = el('select',{},el('option',{value:'trato_directo'},'Trato directo'),el('option',{value:'compra_agil'},'Compra ágil'));
         const folioInf = el('input',{type:'text',placeholder:'Solo si trato directo'});
-        const folio = ciclosAb.length ? el('select',{},el('option',{value:''},'— sin ciclo —'),...ciclosAb.map(c=>el('option',{value:c.folio},c.folio))) : el('input',{type:'text',placeholder:'Folio SIGEM'});
+        const folio = folioCicloControl(ciclosAb);
         extra = {nCotiz,nOC,empresa,via,folioInf,folio};
         campos.appendChild(el('div',{class:'grid-3'},
           formField('Fecha',fecha), formField('N° Cotización',nCotiz), formField('N° OC',nOC)
@@ -3972,7 +4000,7 @@ function nuevoEvento(opts){
       } else if(tipo === 'Envío a servicio técnico'){
         const nEnvio = el('input',{type:'text',placeholder:'Correlativo'});
         const empresa = el('input',{type:'text'});
-        const folio = ciclosAb.length ? el('select',{},el('option',{value:''},'— sin ciclo —'),...ciclosAb.map(c=>el('option',{value:c.folio},c.folio))) : el('input',{type:'text',placeholder:'Folio SIGEM'});
+        const folio = folioCicloControl(ciclosAb);
         extra = {nEnvio,empresa,folio};
         const estadoFixed = el('input',{value:'en servicio técnico',readonly:true});
         campos.appendChild(el('div',{class:'grid-3'},
@@ -3987,7 +4015,7 @@ function nuevoEvento(opts){
       } else if(tipo === 'Recepción'){
         const nEnvio = el('input',{type:'text',placeholder:'N° envío original'});
         const folioGuia = el('input',{type:'text'});
-        const folio = ciclosAb.length ? el('select',{},el('option',{value:''},'— sin ciclo —'),...ciclosAb.map(c=>el('option',{value:c.folio},c.folio))) : el('input',{type:'text',placeholder:'Folio SIGEM'});
+        const folio = folioCicloControl(ciclosAb);
         const estado = el('select',{}, el('option',{value:'no operativo'},'No operativo'), el('option',{value:'operativo'},'Operativo'));
         extra = {nEnvio,folioGuia,folio,estado};
         campos.appendChild(el('div',{class:'grid-3'},
@@ -3996,9 +4024,10 @@ function nuevoEvento(opts){
         campos.appendChild(el('div',{class:'grid-3'},
           formField('Folio SIGEM',folio), formField('Estado resultante',estado), formField('Oficial',oficial)
         ));
+        if(!ciclosAb.length) campos.appendChild(avisoSinCicloAbierto());
         campos.appendChild(formField('Informe técnico / Observación',obs));
       } else if(tipo === 'Reparación'){
-        const folio = ciclosAb.length ? el('select',{},el('option',{value:''},'— sin ciclo —'),...ciclosAb.map(c=>el('option',{value:c.folio},c.folio))) : el('input',{type:'text',placeholder:'Folio SIGEM'});
+        const folio = folioCicloControl(ciclosAb);
         const estado = el('select',{}, el('option',{value:'operativo'},'Operativo (cierra ciclo)'), el('option',{value:'no operativo'},'No operativo'), el('option',{value:'en servicio técnico'},'En servicio técnico (no cierra)'));
         const repuestos = el('input',{type:'text',placeholder:'Repuestos utilizados'});
         extra = {folio,estado,repuestos};
@@ -4008,6 +4037,7 @@ function nuevoEvento(opts){
         campos.appendChild(el('div',{class:'grid-3'},
           formField('Folio SIGEM',folio), formField('Estado resultante',estado), formField('Oficial',oficial)
         ));
+        if(!ciclosAb.length) campos.appendChild(avisoSinCicloAbierto());
         campos.appendChild(formField('Descripción de la tarea',obs));
       } else if(tipo === 'Mantención preventiva'){
         const ejec2 = el('select',{}, el('option',{value:''},'—'), ...EJECUTORES.map(x=>el('option',{value:x},x)));

@@ -17,6 +17,16 @@ HTML = r"""<!DOCTYPE html>
 <script>__LZSTRING_PLACEHOLDER__</script>
 <!--
 CHANGELOG
+v0.28 [2026-05-28] El folio del ciclo se preselecciona; aviso si no hay ciclo abierto.
+  - En los eventos que se vinculan a un ciclo (Visita, Orden de Compra, Envío,
+    Recepción, Reparación), el campo "Folio SIGEM" ahora PRESELECCIONA el ciclo
+    correctivo abierto del equipo en vez de quedar en "— sin ciclo —". El folio se
+    carga solo, y así la Reparación/Recepción operativa cierra el ciclo correcto
+    (antes, si el usuario no elegía el folio, no se cerraba).
+  - Si el equipo no tiene ciclo abierto, Reparación y Recepción muestran un aviso
+    claro (en vez de una casilla muda): revisar si la Solicitud fue anulada o cerrada.
+  - Unificado en el helper folioCicloControl(), reutilizado en los 5 formularios
+    (antes era la misma expresión repetida 5 veces).
 v0.27 [2026-05-28] El número de versión del encabezado se sincroniza solo.
   - El encabezado mostraba "v0.23" fijo (escrito a mano), sin actualizarse al subir
     APP_VERSION en versiones siguientes. Ahora usa el placeholder __APP_VERSION__
@@ -829,7 +839,7 @@ const SEED = __SEED_PLACEHOLDER__;
 //==============================================================
 // CONSTANTES & CATÁLOGOS
 //==============================================================
-const APP_VERSION = '0.27';
+const APP_VERSION = '0.28';
 const STORAGE_KEY = 'hhha_v1_data';
 const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 const MES_NUM = {Ene:0,Feb:1,Mar:2,Abr:3,May:4,Jun:5,Jul:6,Ago:7,Sep:8,Oct:9,Nov:10,Dic:11};
@@ -3890,6 +3900,24 @@ function mpRapida(opts){
 //==============================================================
 // FORMULARIO EVENTO
 //==============================================================
+// Campo "Folio SIGEM" del ciclo correctivo. Con ciclos abiertos: lista preseleccionada
+// en el ciclo abierto (para que el folio "se cargue" solo); sin ciclos: casilla manual.
+function folioCicloControl(ciclosAb){
+  if(!ciclosAb.length) return el('input',{type:'text',placeholder:'Folio SIGEM (sin ciclo abierto)'});
+  const sel = el('select',{},
+    ...ciclosAb.map(c=>el('option',{value:c.folio}, c.folio)),
+    el('option',{value:''},'— sin vincular —')
+  );
+  sel.value = ciclosAb[0].folio;
+  return sel;
+}
+// Aviso para eventos de cierre (Reparación / Recepción) cuando no hay ciclo abierto.
+function avisoSinCicloAbierto(){
+  return el('div',{class:'notice warn'},
+    'Este equipo no tiene un ciclo correctivo abierto. Normalmente esto se vincula a una ' +
+    'Solicitud de trabajo abierta: revisa si fue anulada o ya cerrada. Si igual necesitas ' +
+    'registrarlo, escribe el folio a mano.');
+}
 function nuevoEvento(opts){
   let tipo = opts.tipoDefault || null;
   let invSel = opts.invDefault || '';
@@ -3938,7 +3966,7 @@ function nuevoEvento(opts){
         const empresa = el('input',{type:'text'});
         const tecnico = el('input',{type:'text'});
         const tipoVisita = el('select',{}, el('option',{value:'diagnóstica'},'Diagnóstica'),el('option',{value:'correctiva'},'Correctiva'));
-        const folio = ciclosAb.length ? el('select',{},el('option',{value:''},'— sin ciclo —'),...ciclosAb.map(c=>el('option',{value:c.folio},c.folio))) : el('input',{type:'text',placeholder:'Folio SIGEM'});
+        const folio = folioCicloControl(ciclosAb);
         const estado = el('select',{}, ...['no operativo','operativo','en servicio técnico'].map(s=>el('option',{value:s},s)));
         extra = {empresa,tecnico,tipoVisita,folio,estado};
         campos.appendChild(el('div',{class:'grid-3'},
@@ -3955,7 +3983,7 @@ function nuevoEvento(opts){
         const empresa = el('input',{type:'text'});
         const via = el('select',{},el('option',{value:'trato_directo'},'Trato directo'),el('option',{value:'compra_agil'},'Compra ágil'));
         const folioInf = el('input',{type:'text',placeholder:'Solo si trato directo'});
-        const folio = ciclosAb.length ? el('select',{},el('option',{value:''},'— sin ciclo —'),...ciclosAb.map(c=>el('option',{value:c.folio},c.folio))) : el('input',{type:'text',placeholder:'Folio SIGEM'});
+        const folio = folioCicloControl(ciclosAb);
         extra = {nCotiz,nOC,empresa,via,folioInf,folio};
         campos.appendChild(el('div',{class:'grid-3'},
           formField('Fecha',fecha), formField('N° Cotización',nCotiz), formField('N° OC',nOC)
@@ -3970,7 +3998,7 @@ function nuevoEvento(opts){
       } else if(tipo === 'Envío a servicio técnico'){
         const nEnvio = el('input',{type:'text',placeholder:'Correlativo'});
         const empresa = el('input',{type:'text'});
-        const folio = ciclosAb.length ? el('select',{},el('option',{value:''},'— sin ciclo —'),...ciclosAb.map(c=>el('option',{value:c.folio},c.folio))) : el('input',{type:'text',placeholder:'Folio SIGEM'});
+        const folio = folioCicloControl(ciclosAb);
         extra = {nEnvio,empresa,folio};
         const estadoFixed = el('input',{value:'en servicio técnico',readonly:true});
         campos.appendChild(el('div',{class:'grid-3'},
@@ -3985,7 +4013,7 @@ function nuevoEvento(opts){
       } else if(tipo === 'Recepción'){
         const nEnvio = el('input',{type:'text',placeholder:'N° envío original'});
         const folioGuia = el('input',{type:'text'});
-        const folio = ciclosAb.length ? el('select',{},el('option',{value:''},'— sin ciclo —'),...ciclosAb.map(c=>el('option',{value:c.folio},c.folio))) : el('input',{type:'text',placeholder:'Folio SIGEM'});
+        const folio = folioCicloControl(ciclosAb);
         const estado = el('select',{}, el('option',{value:'no operativo'},'No operativo'), el('option',{value:'operativo'},'Operativo'));
         extra = {nEnvio,folioGuia,folio,estado};
         campos.appendChild(el('div',{class:'grid-3'},
@@ -3994,9 +4022,10 @@ function nuevoEvento(opts){
         campos.appendChild(el('div',{class:'grid-3'},
           formField('Folio SIGEM',folio), formField('Estado resultante',estado), formField('Oficial',oficial)
         ));
+        if(!ciclosAb.length) campos.appendChild(avisoSinCicloAbierto());
         campos.appendChild(formField('Informe técnico / Observación',obs));
       } else if(tipo === 'Reparación'){
-        const folio = ciclosAb.length ? el('select',{},el('option',{value:''},'— sin ciclo —'),...ciclosAb.map(c=>el('option',{value:c.folio},c.folio))) : el('input',{type:'text',placeholder:'Folio SIGEM'});
+        const folio = folioCicloControl(ciclosAb);
         const estado = el('select',{}, el('option',{value:'operativo'},'Operativo (cierra ciclo)'), el('option',{value:'no operativo'},'No operativo'), el('option',{value:'en servicio técnico'},'En servicio técnico (no cierra)'));
         const repuestos = el('input',{type:'text',placeholder:'Repuestos utilizados'});
         extra = {folio,estado,repuestos};
@@ -4006,6 +4035,7 @@ function nuevoEvento(opts){
         campos.appendChild(el('div',{class:'grid-3'},
           formField('Folio SIGEM',folio), formField('Estado resultante',estado), formField('Oficial',oficial)
         ));
+        if(!ciclosAb.length) campos.appendChild(avisoSinCicloAbierto());
         campos.appendChild(formField('Descripción de la tarea',obs));
       } else if(tipo === 'Mantención preventiva'){
         const ejec2 = el('select',{}, el('option',{value:''},'—'), ...EJECUTORES.map(x=>el('option',{value:x},x)));
