@@ -123,4 +123,43 @@
   siempre cruzarlo contra el código antes de confiar en él.
 - **Dónde aplica:** docs/TRASPASO.md (referencia); ítems técnicos pendientes.
 
+## [2026-05-28] Carga de datos reales desde un export XLSX (v0.25)
+
+- **Disparador:** el usuario pidió "entrégame el programa sin ningún dato y usa
+  estos", adjuntando un export del propio sistema (hhhaexport…xlsx, hojas
+  Eventos / Pendientes / Ciclos correctivos). Tras confirmar (eligió "solo los
+  datos del Excel"), se reemplazaron los datos demo por los suyos reales.
+- **Confirmado:**
+  - El export es una SALIDA con pérdida: NO trae el catálogo de equipos ni la
+    programación MP anual. Esos se conservaron del seed previo (893 equipos +
+    matriz). Solo se reemplazaron eventos (85) y pendientes (34); tareas a 0.
+  - La traducción XLSX→interno invierte EXACTAMENTE el mapeo de `exportExcel()`
+    (build_app.py ~4793-4838): cada columna ↔ su campo. Fechas DD-MM-YYYY →
+    YYYY-MM-DD por split de texto (NUNCA `new Date` sobre crudo: invariante de
+    fechas). Tipo de pendiente: etiqueta → clave (inverso de `TIPO_PENDIENTE`).
+  - Los ciclos NO se guardan en el seed: `bootstrap()` los reconstruye desde las
+    Solicitudes de trabajo con folio. Verificado en Node: 3 solicitudes → 3
+    ciclos abiertos idénticos a la hoja Ciclos. 0 Reparaciones operativas → los
+    3 quedan "abierto" (coincide).
+  - Los estados de equipo NO se guardan: `recalcEstadoEquipo` los deriva del
+    evento de mayor fecha. Simulado: 71 operativo, 5 no_operativo, 817
+    desconocido (equipos sin actividad aún); 76 equipos con eventos.
+  - Causales C3/C8 (campo `resultado` de MP) se preservan; 'Creado por'=Cristian
+    y 'Técnico' vacío en los 85 (sin pérdida).
+  - Regresión bug fechas v0.24: 0 MP corridas de mes; una MP del 2026-04-01
+    (día 1) se detecta como ejecutada en abril. El fix sigue firme con datos reales.
+- **Heurística:**
+  1. Un export del sistema sirve para RE-INGESTAR, pero es con pérdida: cruzar
+     sus columnas contra la función exportadora y conservar del seed lo que el
+     export no trae (catálogo, programación, estados derivados, ciclos).
+  2. Preferir reconstruir lo DERIVADO (ciclos, estados) con la lógica del propio
+     programa, no inyectarlo, para no divergir.
+  3. `init()` ahora respeta `tipo`/`origen` del seed si vienen; antes los derivaba
+     del texto y reclasificaba mal 2 pendientes ("Reprogramación MP" con desc
+     "abril"). Regla: la carga del seed no debe "adivinar" lo que el dato afirma.
+- **Dónde aplica:** seed.json (datos); build_app.py `init()` (respeta
+  tipo/origen) + `target` relativo a `__file__` + CHANGELOG v0.25; app.html
+  regenerado. Conversor reproducible en `tools/excel_a_seed.py` (verificado:
+  reproduce el seed byte a byte); insumo en `docs/origen_datos_20260528.xlsx`.
+
 <!-- Próximas entradas debajo de esta línea -->

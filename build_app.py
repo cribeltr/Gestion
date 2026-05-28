@@ -17,6 +17,20 @@ HTML = r"""<!DOCTYPE html>
 <script>__LZSTRING_PLACEHOLDER__</script>
 <!--
 CHANGELOG
+v0.25 [2026-05-28] Carga de datos reales del usuario como nuevo seed.
+  - El programa arranca ahora con los datos reales del usuario: 85 eventos, 34
+    pendientes y 3 ciclos correctivos (reconstruidos desde las Solicitudes de
+    trabajo), sobre el catálogo de 893 equipos y su programación MP anual.
+  - Se reemplazaron los eventos/pendientes de demostración por los del export
+    XLSX del usuario (hojas Eventos/Pendientes), traducidos al formato interno
+    invirtiendo el mapeo de exportExcel(): fechas DD-MM-YYYY -> YYYY-MM-DD por
+    split (sin new Date, respetando la invariante de zona horaria), tipo de
+    pendiente por etiqueta, causales C3/C8 preservadas en 'resultado'.
+  - init(): los pendientes del seed ahora respetan su 'tipo' y 'origen' si vienen
+    dados; si faltan, se derivan del texto como antes (retrocompatible). Evita
+    que 2 'Reprogramacion MP' (desc "abril") se reclasifiquen como 'Gestion general'.
+  - El generador escribe app.html junto al propio build_app.py (antes apuntaba a
+    una ruta absoluta del entorno de construccion).
 v0.24 [2026-05-28] Fix bug de fechas UTC en dos puntos omitidos.
   - El parseo seguro new Date(f+'T00:00:00') se usaba en 4 lugares pero faltaba
     en mpDelMesEjecutada (lectura) y aplicarEfectosEvento/MP (escritura).
@@ -799,7 +813,7 @@ const SEED = __SEED_PLACEHOLDER__;
 //==============================================================
 // CONSTANTES & CATÁLOGOS
 //==============================================================
-const APP_VERSION = '0.24';
+const APP_VERSION = '0.25';
 const STORAGE_KEY = 'hhha_v1_data';
 const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 const MES_NUM = {Ene:0,Feb:1,Mar:2,Abr:3,May:4,Jun:5,Jul:6,Ago:7,Sep:8,Oct:9,Nov:10,Dic:11};
@@ -1022,10 +1036,15 @@ function init(){
   }));
   const ciclos = []; // se reconstruyen
   const pendientes = SEED.pendientes.map(p => {
-    let tipo = 'gestion_general';
-    if((p.desc||'').toLowerCase().includes('pauta de monitoreo')||(p.desc||'').toLowerCase().includes('firma')) tipo='documento_faltante';
-    if((p.desc||'').toLowerCase().includes('reprogram')) tipo='reprogramacion';
-    return {...p, tipo, origen:'manual', seguimientos:[], anulado:false};
+    // Si el seed ya trae 'tipo' (datos importados con su clasificación real),
+    // se respeta; si no (seed original sin tipo), se deriva del texto.
+    let tipo = p.tipo;
+    if(!tipo){
+      tipo = 'gestion_general';
+      if((p.desc||'').toLowerCase().includes('pauta de monitoreo')||(p.desc||'').toLowerCase().includes('firma')) tipo='documento_faltante';
+      if((p.desc||'').toLowerCase().includes('reprogram')) tipo='reprogramacion';
+    }
+    return {...p, tipo, origen: p.origen || 'manual', seguimientos:[], anulado:false};
   });
   const tareas = SEED.tareas.slice();
   // expand inline tareas from pendientes (string "[ ] ...")
@@ -5286,6 +5305,6 @@ with open("/tmp/node_modules/lz-string/libs/lz-string.min.js", "r", encoding="ut
 lzs_safe = re.sub(r"</(script)", r"<\\/\1", lzs, flags=re.IGNORECASE)
 out = out.replace("__LZSTRING_PLACEHOLDER__", lzs_safe)
 
-target = "/home/user/202605281230_EQUIPOS_CRITICOS_GESTION/app.html"
+target = str(pathlib.Path(__file__).resolve().parent / "app.html")
 pathlib.Path(target).write_text(out, encoding="utf-8")
 print(f"Wrote {target}: {len(out)} bytes")
