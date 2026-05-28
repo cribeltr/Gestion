@@ -392,4 +392,21 @@
   hoja oculta del Excel). A considerar si algún día se quiere aligerar.
 - **Dónde aplica:** verificación (sin cambio de código); confirma `compararMaestro`.
 
+## [2026-05-28] Rediseño a barra lateral izquierda + columnas de Equipos (v0.35)
+
+- **Disparador:** el usuario pidió, con una referencia (`ref.html`, otra versión de HHHA con
+  sidebar oscuro), una barra lateral izquierda con el apartado Equipos y columnas específicas.
+- **Hecho:** layout `.app` pasa de grid por filas (header+main) a grid por columnas
+  (sidebar 232px + content[topbar+main]). Barra lateral oscura fija (#0f172a) con TODOS los
+  apartados (se elimina el desplegable "Más"), activo en `--accent`. Herramientas movidas a
+  una topbar delgada. `VIEWS.equipos` con 13 columnas (ID, N° Carpeta, N° Inventario, Equipo,
+  Servicio, Unidad, Ubicación, Procedencia, Marca, Modelo, Estado, Pendientes, Días en estado).
+- **Validado:** `node --check` OK; sidebar/topbar/columnas presentes; "Más" eliminado.
+- **Nota de proceso:** `ref.html` era de otra implementación (clases Tailwind); se extrajo el
+  CONCEPTO de diseño y se reimplementó en build_app.py (fuente de verdad), no se copió el HTML.
+- **Pendiente de feedback visual** (no se pudo renderizar aquí). El grabador flotante queda
+  sobre el sidebar (es arrastrable; a reubicar si molesta).
+- **Dónde aplica:** build_app.py (HTML app/sidebar, CSS layout, `buildNav`/`refreshNav`,
+  `VIEWS.equipos`); CHANGELOG v0.35.
+
 <!-- Próximas entradas debajo de esta línea -->

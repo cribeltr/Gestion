@@ -17,6 +17,15 @@ HTML = r"""<!DOCTYPE html>
 <script>__LZSTRING_PLACEHOLDER__</script>
 <!--
 CHANGELOG
+v0.35 [2026-05-28] Rediseño de navegación: barra lateral izquierda + columnas de Equipos.
+  - El menú horizontal superior pasa a una BARRA LATERAL izquierda fija (oscura, estilo de
+    la referencia del usuario): logo arriba, todos los apartados visibles con su contador,
+    el activo resaltado. Se elimina el desplegable "Más".
+  - Los botones (Excel, Backup, Importar, Reset, tema, indicador) pasan a una franja
+    superior delgada a la derecha. Layout: .app pasa de grid por filas a columnas
+    (232px barra lateral + contenido).
+  - Vista Equipos con las columnas pedidas: ID, N° Carpeta, N° Inventario, Equipo,
+    Servicio, Unidad, Ubicación, Procedencia, Marca, Modelo, Estado, Pendientes, Días en estado.
 v0.34 [2026-05-28] Estado del equipo: se infiere de la carta gantt; por defecto operativo.
   - Antes el estado operativo se calculaba SOLO desde eventos: 811 de 894 equipos quedaban
     "Desconocido" porque su actividad vive en la carta gantt (mismo patrón que el bug de MP).
@@ -480,8 +489,21 @@ input[readonly]{background:var(--soft);color:var(--muted)}
 label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px;font-weight:500;text-transform:uppercase;letter-spacing:.04em}
 textarea{min-height:64px;resize:vertical;font-family:inherit;line-height:1.5}
 
-.app{display:grid;grid-template-rows:52px 1fr;height:100vh;overflow:hidden;background:var(--bg)}
-header.top{background:var(--surface);color:var(--text);display:flex;align-items:center;padding:0 22px;gap:24px;border-bottom:1px solid var(--border)}
+.app{display:grid;grid-template-columns:232px 1fr;height:100vh;overflow:hidden;background:var(--bg)}
+/* Barra lateral oscura fija */
+.sidebar{background:#0f172a;color:#cbd5e1;display:flex;flex-direction:column;overflow-y:auto}
+.s-logo{padding:18px 16px 14px;font-weight:700;font-size:16px;color:#fff;letter-spacing:-.01em}
+.s-logo small{display:block;font-weight:500;font-size:10px;color:#64748b;margin-top:3px;text-transform:uppercase;letter-spacing:.04em}
+.sidebar nav{display:flex;flex-direction:column;gap:2px;padding:8px 10px;flex:1}
+.sidebar nav button{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:transparent;border:none;color:#cbd5e1;padding:10px 12px;border-radius:8px;font-weight:500;font-size:13.5px;cursor:pointer;transition:background .12s,color .12s}
+.sidebar nav button:hover{background:#1e293b;color:#fff}
+.sidebar nav button.active{background:var(--accent);color:#fff;font-weight:600}
+.sidebar nav button .nav-badge{margin-left:auto;background:var(--noop);color:#fff;border-radius:99px;font-size:11px;font-weight:700;padding:1px 8px;min-width:18px;text-align:center;line-height:1.5}
+.s-foot{padding:12px 16px;border-top:1px solid rgba(255,255,255,.08);font-size:12px;color:#94a3b8}
+.content{display:grid;grid-template-rows:48px 1fr;overflow:hidden;min-width:0}
+.topbar{display:flex;align-items:center;gap:6px;padding:0 18px;background:var(--surface);border-bottom:1px solid var(--border)}
+.topbar button{font-size:12.5px;padding:6px 10px;color:var(--muted);border:1px solid var(--border);border-radius:9px;background:var(--surface)}
+.topbar button:hover{color:var(--text);background:var(--surface-2)}
 header.top h1{font-size:14px;margin:0;font-weight:600;letter-spacing:-.01em}
 header.top h1 small{font-weight:400;color:var(--muted);margin-left:8px}
 header.top nav{display:flex;gap:0;flex:1;align-items:center;height:100%}
@@ -901,20 +923,23 @@ header.top nav .nav-more-menu button.active{background:var(--accent-soft);color:
 </head>
 <body>
 <div class="app">
-  <header class="top">
-    <h1>HHHA <small>Equipos Críticos · v__APP_VERSION__</small></h1>
+  <aside class="sidebar">
+    <div class="s-logo">HHHA <small>Equipos Críticos · v__APP_VERSION__</small></div>
     <nav id="nav"></nav>
-    <div class="tools">
+    <div class="s-foot"><span class="user-tag">👤 Cristian</span></div>
+  </aside>
+  <div class="content">
+    <header class="topbar">
+      <div style="flex:1"></div>
       <span id="state-indicator" class="state-indicator" title="">—</span>
       <button id="btn-theme" title="Cambiar tema claro/oscuro" class="theme-btn">🌞</button>
-      <span class="user-tag">Cristian</span>
       <button id="btn-excel" title="Exportar a Excel (.xlsx)">📊 Excel</button>
       <button id="btn-export" title="Exportar backup JSON">💾 Backup</button>
       <button id="btn-import" title="Importar backup JSON">📥 Importar</button>
       <button id="btn-reset" title="Resetear a seed inicial">↻ Reset</button>
-    </div>
-  </header>
-  <main id="main"></main>
+    </header>
+    <main id="main"></main>
+  </div>
 </div>
 
 <div id="modal-root"></div>
@@ -947,7 +972,7 @@ const SEED = __SEED_PLACEHOLDER__;
 //==============================================================
 // CONSTANTES & CATÁLOGOS
 //==============================================================
-const APP_VERSION = '0.34';
+const APP_VERSION = '0.35';
 const STORAGE_KEY = 'hhha_v1_data';
 const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 const MES_NUM = {Ene:0,Feb:1,Mar:2,Abr:3,May:4,Jun:5,Jul:6,Ago:7,Sep:8,Oct:9,Nov:10,Dic:11};
@@ -2176,19 +2201,20 @@ VIEWS.equipos = function(root, params){
       const pend = pendientesDe(e.inv).filter(p => p.estado !== 'cerrado').length;
       const mpEjecutada = mpDelMesEjecutada(e, new Date().getFullYear(), new Date().getMonth());
       const mpProg = mpProgramadaEnMes(e, NUM_MES[new Date().getMonth()]);
-      const conflCount = conflictosDe(e.inv).length;
       tbody.appendChild(el('tr',{class:'clickable',onclick:()=>navigate('equipo',{inv:e.inv})},
         el('td',{class:'num'}, e.id != null ? String(e.id) : '—'),
         el('td',{}, e.carpeta != null ? String(e.carpeta) : '—'),
         el('td',{}, el('strong',{}, e.inv||'—')),
         el('td',{}, e.equipo||'—'),
-        el('td',{}, e.servicio||'—', el('br'), el('small',{class:'muted'}, e.unidad||'')),
+        el('td',{}, e.servicio||'—'),
+        el('td',{}, e.unidad||'—'),
+        el('td',{}, e.ubic||'—'),
+        el('td',{}, e.proc||'—'),
         el('td',{}, e.marca||'—'),
         el('td',{}, e.modelo||'—'),
-        el('td',{}, badgeEstado(e.estado), el('br'), el('small',{class:'muted'}, e.estadoDesde ? diasEnEstado(e)+' d' : '')),
-        el('td',{}, mpProg ? (mpEjecutada ? el('span',{class:'badge mp-si'},'Ejecutada') : el('span',{class:'badge mp-no'},'Pendiente')) : el('small',{class:'muted'},'No prog.')),
+        el('td',{}, badgeEstado(e.estado)),
         el('td',{class:'num'}, pend > 0 ? el('span',{class:'badge abierto'},pend) : el('small',{class:'muted'},'—')),
-        el('td',{class:'num'}, conflCount > 0 ? el('span',{class:'badge noop',title:`${conflCount} conflicto(s) pendientes con maestro`}, conflCount) : el('small',{class:'muted'},'—'))
+        el('td',{class:'num'}, e.estadoDesde ? diasEnEstado(e)+' d' : el('small',{class:'muted'},'—'))
       ));
     });
     counter.textContent = `${filtered.length} equipos${filtered.length>500?' (mostrando primeros 500)':''}`;
@@ -2234,7 +2260,7 @@ VIEWS.equipos = function(root, params){
       el('table',{class:'data',style:{border:'none'}},
         el('thead',{},
           el('tr',{},
-            ['ID','N° Carpeta','N° Inv.','Equipo','Servicio / Unidad','Marca','Modelo','Estado','MP del mes','Pend.','Conf.'].map(h=>el('th',{},h))
+            ['ID','N° Carpeta','N° Inventario','Equipo','Servicio','Unidad','Ubicación','Procedencia','Marca','Modelo','Estado','Pendientes','Días en estado'].map(h=>el('th',{},h))
           )
         ),
         tbody
@@ -5525,37 +5551,18 @@ function navBadge(k, b){
   }
 }
 function buildNav(){
-  // Cerrar el menú "Más" al hacer click fuera (se registra una sola vez).
-  if(!window.__navMoreBound){ window.__navMoreBound = true;
-    document.addEventListener('click', e=>{
-      if(!e.target.closest('.nav-more')) document.querySelectorAll('.nav-more.open').forEach(x=>x.classList.remove('open'));
-    });
-  }
   const nav = $('#nav');
   nav.innerHTML = '';
-  NAV_PRINCIPAL.forEach(([k,l])=>{
-    const b = el('button',{'data-view':k,onclick:()=>navigate(k)},l);
+  // En la barra lateral hay espacio vertical: se muestran todos los apartados.
+  [...NAV_PRINCIPAL, ...NAV_SECUNDARIO].forEach(([k,l])=>{
+    const b = el('button',{'data-view':k,onclick:()=>navigate(k)}, l);
     navBadge(k,b);
     nav.appendChild(b);
   });
-  // Menú "Más" con las vistas secundarias
-  const wrap = el('div',{class:'nav-more'});
-  const toggle = el('button',{'data-view':'__more__', onclick:()=>wrap.classList.toggle('open')}, 'Más ▾');
-  const menu = el('div',{class:'nav-more-menu'});
-  NAV_SECUNDARIO.forEach(([k,l])=>{
-    const ob = el('button',{'data-view':k, onclick:()=>{ wrap.classList.remove('open'); navigate(k); }}, l);
-    navBadge(k,ob);
-    menu.appendChild(ob);
-  });
-  wrap.appendChild(toggle); wrap.appendChild(menu);
-  nav.appendChild(wrap);
 }
 function refreshNav(){
   buildNav();
   $$('#nav button').forEach(b => b.classList.toggle('active', b.dataset.view === currentView));
-  // Si la vista actual está en el menú "Más", marcar ese botón como activo.
-  const moreBtn = $('#nav [data-view="__more__"]');
-  if(moreBtn && NAV_SECUNDARIO.some(([k])=>k===currentView)) moreBtn.classList.add('active');
 }
 
 function quickSearch(){
